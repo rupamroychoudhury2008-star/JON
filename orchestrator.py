@@ -1,0 +1,359 @@
+import json
+import time
+import urllib.parse
+from typing import Dict, Any, Optional, List
+from collections import defaultdict
+from config.settings import settings
+from router.intent_router import IntentRouter, UserRequest, IntentDecision
+from router.ollama_client import OllamaClient
+from router.network_detector import is_network_available
+from memory.memory_manager import MemoryManager
+from cloud_gateway.gateway import CloudGateway
+from tools.executor import ToolExecutor, TOOLS_SCHEMA
+from io_layer.tts import TextToSpeech
+
+SYSTEM_OFFLINE_PROMPT = """You are Jon, a local-first personal AI assistant.
+You are currently operating in OFFLINE mode.
+Answer the user's request concisely based on the available memory context.
+Direct local file, note, and desktop app operations are permitted.
+"""
+
+class JonOrchestrator:
+    """Main state machine orchestrating Router, Memory, Cloud Gateway, Tools, and I/O."""
+
+    def __init__(self,
+                 router: Optional[IntentRouter] = None,
+                 memory: Optional[MemoryManager] = None,
+                 gateway: Optional[CloudGateway] = None,
+                 tool_executor: Optional[ToolExecutor] = None,
+                 tts: Optional[TextToSpeech] = None):
+
+        self.router = router or IntentRouter()
+        self.memory = memory or MemoryManager()
+        self.gateway = gateway or CloudGateway()
+        self.tool_executor = tool_executor or ToolExecutor(vault=self.memory.vault)
+        self.tts = tts or TextToSpeech()
+        self.ollama = OllamaClient()
+
+        # Conversation history per session (last N exchanges)
+        self._conversation_history: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+        self._max_history_per_session = 10
+
+    def _add_to_history(self, session_id: str, role: str, content: str):
+        """Track conversation turns for multi-turn context."""
+        history = self._conversation_history[session_id]
+        history.append({"role": role, "content": content})
+        if len(history) > self._max_history_per_session * 2:
+            self._conversation_history[session_id] = history[-self._max_history_per_session * 2:]
+
+    def get_conversation_history(self, session_id: str) -> List[Dict[str, str]]:
+        """Returns the conversation history for a session."""
+        return list(self._conversation_history.get(session_id, []))
+
+    def process_request(self, request: UserRequest, force_offline: bool = False, speak_output: bool = False) -> Dict[str, Any]:
+        """
+        Executes full request pipeline with timing metrics.
+        Handles both Online Cloud and Offline Local Execution seamlessly.
+        """
+        pipeline_start = time.time()
+        timing = {}
+
+        # 0. Add user message to history
+        self._add_to_history(request.session_id, "user", request.text)
+
+        # 1. Routing decision
+        t0 = time.time()
+        decision: IntentDecision = self.router.route(request, force_offline=force_offline)
+        timing["routing_ms"] = round((time.time() - t0) * 1000, 1)
+
+        # 2. Memory Retrieval
+        t0 = time.time()
+        memory_context = self.memory.get_relevant_context(request.text)
+        timing["memory_retrieval_ms"] = round((time.time() - t0) * 1000, 1)
+
+        # Build conversation context from history
+        history = self.get_conversation_history(request.session_id)
+        history_context = ""
+        if len(history) > 2:
+            recent = history[-6:-1]
+            history_lines = []
+            for entry in recent:
+                prefix = "User" if entry["role"] == "user" else "Jon"
+                history_lines.append(f"{prefix}: {entry['content'][:200]}")
+            if history_lines:
+                history_context = "\n--- Recent Conversation ---\n" + "\n".join(history_lines) + "\n---\n"
+
+        full_context = memory_context
+        if history_context:
+            full_context = history_context + "\n" + memory_context
+
+        response_text = ""
+        path_handled = ""
+        tool_results = []
+
+        # 3. Branching execution (Offline vs Online)
+        t0 = time.time()
+        if not decision.is_online:
+            path_handled = f"Offline Local ({settings.offline_model})"
+            response_text = self._execute_offline_path(request, full_context)
+
+            # Execute local device automation tools in offline mode!
+            action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+            if any(w in request.text.lower() for w in action_keywords):
+                fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
+                if fb_res:
+                    fb_text, fb_tools = fb_res
+                    response_text = f"{response_text}\n\n{fb_text}".strip() if response_text else fb_text
+                    tool_results.extend(fb_tools)
+        else:
+            try:
+                path_handled = f"Cloud [{decision.intent}] -> {decision.target_model}"
+                cloud_res = self.gateway.route_to_cloud(
+                    intent=decision.intent,
+                    request=request,
+                    context=full_context,
+                    tools_schema=TOOLS_SCHEMA if decision.intent == "device_automation" else None
+                )
+
+                if cloud_res.get("tool_calls"):
+                    tool_calls = cloud_res["tool_calls"]
+                    exec_outcomes = []
+                    for tc in tool_calls:
+                        func_info = tc.get("function", {})
+                        t_name = func_info.get("name")
+                        try:
+                            t_args = json.loads(func_info.get("arguments", "{}")) if isinstance(func_info.get("arguments"), str) else func_info.get("arguments", {})
+                        except Exception:
+                            t_args = {}
+
+                        out = self.tool_executor.execute_tool(
+                            tool_name=t_name,
+                            args=t_args,
+                            session_id=request.session_id
+                        )
+                        exec_outcomes.append(str(out))
+                        tool_results.append(out.to_dict())
+
+                    response_text = "\n".join(exec_outcomes)
+                    if cloud_res.get("content"):
+                        llm_txt = str(cloud_res["content"]).strip()
+                        if not any(phrase in llm_txt.lower() for phrase in ["not capable", "cannot directly", "can't directly", "unable to interact", "don't have direct"]):
+                            response_text = f"{llm_txt}\n\n{response_text}"
+                else:
+                    response_text = cloud_res.get("content", "Task completed.")
+                    action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+                    if decision.intent == "device_automation" or any(w in request.text.lower() for w in action_keywords):
+                        fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
+                        if fb_res:
+                            fb_text, fb_tools = fb_res
+                            # If LLM outputted refusal disclaimers, discard the hallucinated refusal text in favor of tool output
+                            disclaimers = ["cannot directly", "can't directly", "not capable", "unable to interact", "don't have direct", "as an ai"]
+                            if any(d in response_text.lower() for d in disclaimers) or not response_text.strip():
+                                response_text = fb_text
+                            else:
+                                response_text = f"{response_text}\n\n{fb_text}".strip()
+                            tool_results.extend(fb_tools)
+
+            except Exception as cloud_err:
+                # Fallback to local offline model if cloud API fails or network drops
+                path_handled = f"Offline Fallback (Cloud Error: {type(cloud_err).__name__}: {str(cloud_err)[:100]})"
+                response_text = self._execute_offline_path(request, full_context)
+                action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+                if decision.intent == "device_automation" or any(w in request.text.lower() for w in action_keywords):
+                    fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
+                    if fb_res:
+                        fb_text, fb_tools = fb_res
+                        disclaimers = ["cannot directly", "can't directly", "not capable", "unable to interact", "don't have direct", "as an ai"]
+                        if any(d in response_text.lower() for d in disclaimers) or not response_text.strip():
+                            response_text = fb_text
+                        else:
+                            response_text = f"{response_text}\n\n{fb_text}".strip()
+                        tool_results.extend(fb_tools)
+
+        timing["llm_execution_ms"] = round((time.time() - t0) * 1000, 1)
+
+        # 4. Save to Obsidian ShortTerm memory
+        t0 = time.time()
+        self.memory.save_interaction(
+            session_id=request.session_id,
+            request_text=request.text,
+            path_handled=path_handled,
+            response_text=response_text,
+            tags=[decision.intent, "jon_interaction"]
+        )
+        timing["memory_save_ms"] = round((time.time() - t0) * 1000, 1)
+
+        # 5. Add response to conversation history
+        self._add_to_history(request.session_id, "assistant", response_text[:500])
+
+        # 6. Timing metrics
+        timing["total_ms"] = round((time.time() - pipeline_start) * 1000, 1)
+
+        try:
+            print(f"\n[Jon Response ({path_handled})]:\n{response_text}")
+        except UnicodeEncodeError:
+            safe_resp = response_text.encode('ascii', errors='backslashreplace').decode('ascii')
+            safe_path = path_handled.encode('ascii', errors='backslashreplace').decode('ascii')
+            print(f"\n[Jon Response ({safe_path})]:\n{safe_resp}")
+
+        # 7. Speak output if requested or configured
+        if speak_output or getattr(settings, 'io_default_output', 'text') == "voice":
+            self.tts.speak(response_text)
+
+        return {
+            "session_id": request.session_id,
+            "decision": decision.model_dump(),
+            "path_handled": path_handled,
+            "response": response_text,
+            "tool_results": tool_results,
+            "timing": timing
+        }
+
+    def _execute_offline_path(self, request: UserRequest, context: str) -> str:
+        prompt = f"User Request: {request.text}"
+
+        health = self.ollama.health_check()
+        available_models = health.get("available_models", [])
+
+        candidates = [settings.offline_model, settings.router_model, "llama3.1:8b", "llama3.2:3b", "phi3:mini"]
+        target_model = None
+
+        for cand in candidates:
+            if cand in available_models or any(cand in m for m in available_models):
+                target_model = cand
+                break
+
+        if not target_model and available_models:
+            target_model = available_models[0]
+
+        if target_model:
+            try:
+                return self.ollama.generate(
+                    model=target_model,
+                    prompt=prompt,
+                    system=SYSTEM_OFFLINE_PROMPT + f"\n\n{context}",
+                    temperature=0.3
+                )
+            except Exception as e:
+                print(f"[OFFLINE WARN]: Local Ollama model '{target_model}' error: {e}")
+
+        return f"JON Offline Engine Standing By. Processed local request: '{request.text}'"
+
+    def _fallback_parse_and_execute_tools(self, text: str, session_id: str):
+        lower = text.lower().strip()
+
+        clean = lower
+        for prefix in ["can you please ", "could you please ", "please ", "can you ", "could you ", "i want to ", "jon ", "hey jon "]:
+            if clean.startswith(prefix):
+                clean = clean[len(prefix):].strip()
+
+        # 0. Terminal Open / Close
+        if clean in ["open terminal", "launch terminal", "new terminal", "start terminal"]:
+            out = self.tool_executor.execute_tool("open_terminal", {}, session_id=session_id)
+            return str(out), [out.to_dict()]
+        if clean in ["close terminal", "exit terminal", "kill terminal"]:
+            out = self.tool_executor.execute_tool("close_terminal", {}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 1. Open app or browser / website
+        if any(clean.startswith(w) for w in ["open ", "launch ", "start "]):
+            target = clean
+            for prefix in ["open app ", "open website ", "open ", "launch app ", "launch ", "start app ", "start "]:
+                if target.startswith(prefix):
+                    target = target[len(prefix):].strip()
+                    break
+
+            for suffix in [" on my computer", " on computer", " on my pc", " on pc", " please", " app", " application"]:
+                if target.endswith(suffix):
+                    target = target[:-len(suffix)].strip()
+
+            known_sites = {
+                "google": "https://www.google.com",
+                "youtube": "https://www.youtube.com",
+                "github": "https://www.github.com",
+                "linkedin": "https://www.linkedin.com",
+                "gmail": "https://mail.google.com",
+                "google mail": "https://mail.google.com",
+                "twitter": "https://www.x.com",
+                "x": "https://www.x.com",
+                "reddit": "https://www.reddit.com",
+                "facebook": "https://www.facebook.com"
+            }
+
+            if target in known_sites or "." in target or target.startswith("http"):
+                url = known_sites.get(target, target)
+                if not url.startswith("http"):
+                    url = f"https://{url}"
+                out = self.tool_executor.execute_tool("open_browser", {"url": url}, session_id=session_id)
+                return str(out), [out.to_dict()]
+            else:
+                out = self.tool_executor.execute_tool("open_app", {"name": target}, session_id=session_id)
+                return str(out), [out.to_dict()]
+
+        # 2. Close app
+        if any(clean.startswith(w) for w in ["close ", "stop ", "kill "]):
+            target = clean
+            for prefix in ["close app ", "close ", "stop app ", "stop ", "kill app ", "kill "]:
+                if target.startswith(prefix):
+                    target = target[len(prefix):].strip()
+                    break
+            out = self.tool_executor.execute_tool("close_app", {"name": target}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 3. Read file
+        if any(clean.startswith(w) for w in ["read file ", "view file ", "cat "]):
+            path = clean
+            for prefix in ["read file ", "view file ", "cat "]:
+                if path.startswith(prefix):
+                    path = path[len(prefix):].strip()
+                    break
+            out = self.tool_executor.execute_tool("read_file", {"path": path}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 4. Write file
+        if any(clean.startswith(w) for w in ["write file ", "create file "]):
+            rest = clean
+            for prefix in ["write file ", "create file "]:
+                if rest.startswith(prefix):
+                    rest = rest[len(prefix):].strip()
+                    break
+            parts = rest.split(" content ", 1)
+            path = parts[0].strip()
+            content = parts[1].strip() if len(parts) > 1 else ""
+            out = self.tool_executor.execute_tool("write_file", {"path": path, "content": content}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 5. Run command
+        if any(clean.startswith(w) for w in ["run command ", "exec ", "terminal ", "run "]):
+            cmd = clean
+            for prefix in ["run command ", "exec ", "terminal ", "run "]:
+                if cmd.startswith(prefix):
+                    cmd = cmd[len(prefix):].strip()
+                    break
+            out = self.tool_executor.execute_tool("run_command", {"cmd": cmd}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 6. Search in browser
+        if any(clean.startswith(w) for w in ["search ", "google "]):
+            query = clean
+            for prefix in ["search ", "google "]:
+                if query.startswith(prefix):
+                    query = query[len(prefix):].strip()
+                    break
+            url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+            out = self.tool_executor.execute_tool("open_browser", {"url": url}, session_id=session_id)
+            return str(out), [out.to_dict()]
+
+        # 7. Standalone app names like "notepad", "calculator", "chrome", "spotify", "word"
+        apps_standalone = [
+            "notepad", "calc", "calculator", "cmd", "powershell", "explorer",
+            "paint", "mspaint", "vscode", "code", "chrome", "edge", "msedge",
+            "word", "excel", "powerpoint", "camera", "spotify", "discord",
+            "firefox", "brave", "taskmgr", "task manager", "settings"
+        ]
+        for app in apps_standalone:
+            if clean == app or clean == f"open {app}":
+                out = self.tool_executor.execute_tool("open_app", {"name": app}, session_id=session_id)
+                return str(out), [out.to_dict()]
+
+        return None

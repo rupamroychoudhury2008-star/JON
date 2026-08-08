@@ -1,0 +1,335 @@
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+
+export type ViewId =
+  | 'voice'
+  | 'session'
+  | 'metrics'
+  | 'logs'
+  | 'appearance'
+  | 'connectivity'
+  | 'diagnostics'
+  | 'settings';
+
+export type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING' | 'ERROR';
+
+export type ThemePalette = 'cyan' | 'amber' | 'emerald' | 'violet';
+
+export type ColorMode = 'dark' | 'light';
+
+export interface ToolResultEntry {
+  success: boolean;
+  tool_name: string;
+  action: string;
+  target?: string;
+  message: string;
+  error?: string;
+  data?: Record<string, any>;
+}
+
+export interface SessionEntry {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: number;
+  latencyMs?: number;
+  toolResults?: ToolResultEntry[];
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: number;
+  category: 'SYS' | 'VOICE' | 'NET' | 'SEC' | 'AI';
+  level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS' | 'DEBUG';
+  message: string;
+  details?: string;
+}
+
+export interface AppSettings {
+  voiceModel: string;
+  autoSpeak: boolean;
+  noiseCancellation: boolean;
+  wakeWordEnabled: boolean;
+  particleSpeed: number;
+  audioVolume: number;
+}
+
+export interface AppState {
+  activeView: ViewId;
+  setActiveView: (view: ViewId) => void;
+  voiceState: VoiceState;
+  setVoiceState: (state: VoiceState) => void;
+  sessionHistory: SessionEntry[];
+  addToHistory: (entry: Omit<SessionEntry, 'id'>) => void;
+  clearHistory: () => void;
+  logs: LogEntry[];
+  addLog: (entry: Omit<LogEntry, 'id'>) => void;
+  clearLogs: () => void;
+  theme: ThemePalette;
+  setTheme: (theme: ThemePalette) => void;
+  colorMode: ColorMode;
+  setColorMode: (mode: ColorMode) => void;
+  toggleColorMode: () => void;
+  settings: AppSettings;
+  updateSettings: (partial: Partial<AppSettings>) => void;
+  latestResponse: string;
+  setLatestResponse: (r: string) => void;
+  isRebooting: boolean;
+  triggerReboot: () => void;
+  isSidebarExpanded: boolean;
+  setIsSidebarExpanded: (expanded: boolean) => void;
+  stopAssistantSpeech: () => void;
+  processCommand: (text: string) => Promise<void>;
+}
+
+export const THEME_COLORS: Record<ThemePalette, { primary: string; fix: string; glow: string; subtle: string }> = {
+  cyan:    { primary: '#00dbe7', fix: '#74f5ff', glow: 'rgba(0,219,231,0.45)', subtle: 'rgba(0,219,231,0.08)' },
+  amber:   { primary: '#ffba20', fix: '#ffe082', glow: 'rgba(255,186,32,0.45)', subtle: 'rgba(255,186,32,0.08)' },
+  emerald: { primary: '#00e676', fix: '#69f0ae', glow: 'rgba(0,230,118,0.45)', subtle: 'rgba(0,230,118,0.08)' },
+  violet:  { primary: '#b388ff', fix: '#d1c4e9', glow: 'rgba(179,136,255,0.45)', subtle: 'rgba(179,136,255,0.08)' },
+};
+
+const AppContext = createContext<AppState | null>(null);
+
+export function useApp(): AppState {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useApp must be used within AppProvider');
+  return ctx;
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [activeView, setActiveView] = useState<ViewId>('voice');
+  const [voiceState, setVoiceState] = useState<VoiceState>('IDLE');
+  const [sessionHistory, setSessionHistory] = useState<SessionEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>(() => generateInitialLogs());
+  const [theme, setThemeState] = useState<ThemePalette>('cyan');
+  const [colorMode, setColorModeState] = useState<ColorMode>(() => {
+    return (localStorage.getItem('jon_color_mode') as ColorMode) || 'dark';
+  });
+  const [latestResponse, setLatestResponse] = useState('');
+  const [isRebooting, setIsRebooting] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>({
+    voiceModel: 'Zephyr',
+    autoSpeak: true,
+    noiseCancellation: true,
+    wakeWordEnabled: true,
+    particleSpeed: 1.0,
+    audioVolume: 0.7,
+  });
+
+
+  const setColorMode = useCallback((mode: ColorMode) => {
+    setColorModeState(mode);
+    localStorage.setItem('jon_color_mode', mode);
+    document.documentElement.setAttribute('data-color-mode', mode);
+  }, []);
+
+  const toggleColorMode = useCallback(() => {
+    setColorMode(colorMode === 'dark' ? 'light' : 'dark');
+  }, [colorMode, setColorMode]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-mode', colorMode);
+  }, [colorMode]);
+
+  const addToHistory = useCallback((entry: Omit<SessionEntry, 'id'>) => {
+    setSessionHistory(prev => [...prev, { ...entry, id: crypto.randomUUID() }]);
+  }, []);
+
+  const clearHistory = useCallback(() => setSessionHistory([]), []);
+
+  const addLog = useCallback((entry: Omit<LogEntry, 'id'>) => {
+    setLogs(prev => [...prev, { ...entry, id: crypto.randomUUID() }]);
+  }, []);
+
+  const clearLogs = useCallback(() => setLogs([]), []);
+
+  const stopAssistantSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setVoiceState('IDLE');
+    addLog({
+      timestamp: Date.now(),
+      category: 'VOICE',
+      level: 'INFO',
+      message: 'TRANSMISSION ABORTED — Operator interrupted response speech.',
+    });
+  }, [addLog]);
+
+  // Global Escape key listener to stop response speech instantly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (voiceState === 'SPEAKING' || (window.speechSynthesis && window.speechSynthesis.speaking))) {
+        stopAssistantSpeech();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [voiceState, stopAssistantSpeech]);
+
+  const setTheme = useCallback((t: ThemePalette) => {
+    setThemeState(t);
+    const colors = THEME_COLORS[t];
+    document.documentElement.style.setProperty('--accent-color', colors.primary);
+    document.documentElement.style.setProperty('--accent-fix', colors.fix);
+    document.documentElement.style.setProperty('--accent-glow', colors.glow);
+    document.documentElement.style.setProperty('--accent-subtle', colors.subtle);
+  }, []);
+
+  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
+    setSettings(prev => ({ ...prev, ...partial }));
+  }, []);
+
+  const triggerReboot = useCallback(() => {
+    setIsRebooting(true);
+    addLog({
+      timestamp: Date.now(),
+      category: 'SYS',
+      level: 'WARN',
+      message: 'REBOOTING JON COMMAND CORE — Full state reset sequence initiated.',
+      details: 'All memory registers flushed, neural pathways reinitialized.'
+    });
+
+    setTimeout(() => {
+      setIsRebooting(false);
+      addLog({
+        timestamp: Date.now(),
+        category: 'SYS',
+        level: 'SUCCESS',
+        message: 'JON COMMAND CORE REBOOT COMPLETE — All subsystems online.',
+        details: 'System standing by for operator instructions.'
+      });
+    }, 2500);
+  }, [addLog]);
+
+  const processCommand = useCallback(async (text: string) => {
+    const startTime = performance.now();
+    addToHistory({ role: 'user', text, timestamp: Date.now() });
+    setVoiceState('PROCESSING');
+
+    addLog({
+      timestamp: Date.now(),
+      category: 'AI',
+      level: 'INFO',
+      message: `Dispatching command: "${text.substring(0, 60)}"`,
+    });
+
+    const lower = text.toLowerCase().trim();
+
+    if (lower.includes('reboot')) {
+      triggerReboot();
+    } else if (lower.includes('light mode')) {
+      setColorMode('light');
+    } else if (lower.includes('dark mode')) {
+      setColorMode('dark');
+    } else if (lower.includes('diagnostic') || lower.includes('diag')) {
+      setActiveView('diagnostics');
+    } else if (lower.includes('metric') || lower.includes('telemetry')) {
+      setActiveView('metrics');
+    } else if (lower.includes('log') || lower.includes('terminal')) {
+      setActiveView('logs');
+    } else if (lower.includes('session') || lower.includes('history')) {
+      setActiveView('session');
+    } else if (lower.includes('appearance') || lower.includes('theme')) {
+      setActiveView('appearance');
+    } else if (lower.includes('connectivity') || lower.includes('network')) {
+      setActiveView('connectivity');
+    } else if (lower.includes('setting')) {
+      setActiveView('settings');
+    }
+
+    let responseText = '';
+    let latencyMs = 0;
+    let toolResults: ToolResultEntry[] | undefined = undefined;
+
+    try {
+      const res = await fetch('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, prompt: text })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        responseText = data.response || data.output || data.result || 'Command processed successfully.';
+        toolResults = data.tool_results as ToolResultEntry[] | undefined;
+        latencyMs = data.latency_ms || data.timing?.total_ms || Math.round(performance.now() - startTime);
+        const pathHandled = data.path_handled || data.target_llm_lane || 'Gemini 3.6 Flash';
+        addLog({
+          timestamp: Date.now(),
+          category: 'AI',
+          level: 'SUCCESS',
+          message: `Response received via ${pathHandled} in ${latencyMs}ms`,
+        });
+      } else {
+        let errText = `HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errText = `${res.status}: ${errData.error}`;
+        } catch {}
+        throw new Error(errText);
+      }
+    } catch (err: any) {
+      latencyMs = Math.round(performance.now() - startTime);
+      responseText = `⚠️ Backend Server Error (${err.message}). Please restart 'python server.py' in terminal and retry.`;
+      addLog({
+        timestamp: Date.now(),
+        category: 'SYS',
+        level: 'ERROR',
+        message: `Backend API error (${err.message}). Please restart server.py.`,
+      });
+    }
+
+    addToHistory({ role: 'assistant', text: responseText, timestamp: Date.now(), latencyMs, toolResults });
+    setLatestResponse(responseText);
+
+    if (settings.autoSpeak) {
+      setVoiceState('SPEAKING');
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(responseText);
+        utterance.rate = 0.95;
+        utterance.pitch = 0.9;
+        utterance.volume = settings.audioVolume;
+        utterance.onend = () => setVoiceState('IDLE');
+        utterance.onerror = () => setVoiceState('IDLE');
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setVoiceState('IDLE');
+      }
+    } else {
+      setVoiceState('IDLE');
+    }
+  }, [addToHistory, addLog, triggerReboot, setColorMode, settings.autoSpeak, settings.audioVolume]);
+
+  const contextValue: AppState = {
+    activeView, setActiveView,
+    voiceState, setVoiceState,
+    sessionHistory, addToHistory, clearHistory,
+    logs, addLog, clearLogs,
+    theme, setTheme,
+    colorMode, setColorMode, toggleColorMode,
+    settings, updateSettings,
+    latestResponse, setLatestResponse,
+    isRebooting, triggerReboot,
+    isSidebarExpanded, setIsSidebarExpanded,
+    stopAssistantSpeech,
+    processCommand,
+  };
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+}
+
+function generateInitialLogs(): LogEntry[] {
+  const now = Date.now();
+  const entries: Omit<LogEntry, 'id'>[] = [
+    { timestamp: now - 12000, category: 'SYS', level: 'INFO', message: 'JON COMMAND CENTER v4.2.1 — Tactical HUD Online', details: 'Core architecture: React + TypeScript + WebGL' },
+    { timestamp: now - 11000, category: 'SYS', level: 'SUCCESS', message: 'Core memory banks initialized — 16384 MB allocated', details: 'ECC RAM check passed' },
+    { timestamp: now - 10000, category: 'NET', level: 'INFO', message: 'Network interfaces enumerated — eth0: UP, wlan0: UP', details: 'Gigabit Ethernet & Wi-Fi 7 online' },
+    { timestamp: now - 9000, category: 'SEC', level: 'SUCCESS', message: 'Security protocol Omega-7 engaged — AES-256-GCM', details: 'TLS 1.3 handshake verified' },
+    { timestamp: now - 8000, category: 'AI', level: 'INFO', message: 'Neural pipeline initialized — Gemini 3.6 Flash connected', details: 'Model endpoint: /api/command' },
+    { timestamp: now - 7000, category: 'VOICE', level: 'INFO', message: 'Audio subsystem online — PCM buffer: 256 samples @ 48kHz', details: 'Web Speech API interface ready' },
+    { timestamp: now - 6000, category: 'SYS', level: 'DEBUG', message: 'WebGL shader compiler: GLSL ES 3.0 fragment linked OK', details: 'Shader particle density: 1000' },
+  ];
+  return entries.map(e => ({ ...e, id: crypto.randomUUID() }));
+}

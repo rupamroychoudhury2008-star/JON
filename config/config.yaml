@@ -1,0 +1,54 @@
+system:
+  name: "Jon"
+  wake_words:
+    - "jon"
+    - "hey jon"
+    - "john"
+    - "hey john"
+    - "yo jon"
+    - "hi jon"
+  vault_path: "d:/JON/vault"
+  require_confirmation: true
+
+ollama:
+  base_url: "http://127.0.0.1:11434"
+  router_model: "llama3.2:3b"
+  offline_model: "llama3.1:8b"
+  timeout_seconds: 60
+
+network:
+  check_hosts:
+    - "http://1.1.1.1"
+    - "http://8.8.8.8"
+    - "https://www.google.com"
+  timeout_seconds: 2
+
+cloud_models:
+  groq:
+    model: "llama-3.3-70b-versatile"
+    temperature: 0.7
+    timeout_seconds: 30
+  nvidia_coding:
+    model: "meta/llama-3.3-70b-instruct"
+    temperature: 0.2
+    timeout_seconds: 45
+  nvidia_automation:
+    model: "nvidia/nemotron-3-ultra-550b-a55b"
+    temperature: 0.1
+    timeout_seconds: 60
+    fallback_models:
+      - "nvidia/nemotron-3-ultra-550b-a55b"
+      - "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  static_dir: "static"
+
+io:
+  default_input: "voice"
+  default_output: "voice"
+  tts_rate: 180
+  stt_timeout: 15
+  stt_phrase_time_limit: 30
+  stt_pause_threshold: 2.0

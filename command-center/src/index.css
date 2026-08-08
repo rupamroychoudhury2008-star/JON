@@ -1,0 +1,420 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   JON COMMAND CENTER — Aura Tactile / Super Matte Skeuomorphism Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+
+/* ── Geist Font (@font-face from node_modules) ─────────────────────────── */
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Theme Tokens ──────────────────────────────────────────────────────── */
+@theme {
+  --color-surface: #0e0e10;
+  --color-recessed: #141416;
+  --color-elevated: #1a1a1e;
+  --color-elevated-hover: #24242a;
+
+  --color-cyan-dim: #00dbe7;
+  --color-cyan-fix: #74f5ff;
+  --color-cyan-glow: rgba(0, 219, 231, 0.45);
+  --color-cyan-subtle: rgba(0, 219, 231, 0.08);
+  --color-cyan-border: rgba(0, 219, 231, 0.25);
+
+  --color-amber: #ffba20;
+  --color-amber-glow: rgba(255, 186, 32, 0.4);
+  --color-amber-subtle: rgba(255, 186, 32, 0.08);
+
+  --color-emerald: #00e676;
+  --color-emerald-glow: rgba(0, 230, 118, 0.4);
+
+  --color-violet: #b388ff;
+  --color-violet-glow: rgba(179, 136, 255, 0.4);
+
+  --color-danger-bg: #8a0008;
+  --color-danger-text: #ffdad6;
+
+  --color-tech-border: rgba(140, 160, 165, 0.15);
+  --color-tech-border-strong: rgba(140, 160, 165, 0.3);
+
+  --color-text-primary: #e2e4e9;
+  --color-text-secondary: #8e95a0;
+  --color-text-muted: #525862;
+  --color-text-bright: #ffffff;
+
+  --font-display: "Geist Sans", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", "Geist Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, monospace;
+
+  --sidebar-collapsed: 72px;
+  --sidebar-expanded: 240px;
+  --topbar-height: 54px;
+  --mobile-drawer-height: 160px;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+/* ── Light Mode Color Overrides ────────────────────────────────────────── */
+html[data-color-mode="light"] {
+  --color-surface: #f1f4f9;
+  --color-recessed: #e1e6f0;
+  --color-elevated: #ffffff;
+  --color-elevated-hover: #e8edf5;
+
+  --color-tech-border: rgba(100, 116, 139, 0.22);
+  --color-tech-border-strong: rgba(100, 116, 139, 0.4);
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-bright: #0f172a;
+}
+
+html[data-color-mode="light"] body {
+  background: #cbd5e1;
+  color: var(--color-text-primary);
+}
+
+html[data-color-mode="light"] .app-frame {
+  background: var(--color-surface);
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow:
+    0 0 35px rgba(99, 102, 241, 0.15),
+    0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+html[data-color-mode="light"] .recessed-tray {
+  background: var(--color-recessed);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.1),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.9);
+  border-color: var(--color-tech-border);
+}
+
+html[data-color-mode="light"] .extruded-btn {
+  background: var(--color-elevated);
+  box-shadow:
+    2px 2px 5px rgba(0, 0, 0, 0.1),
+    -1px -1px 2px rgba(255, 255, 255, 0.9);
+  border-color: var(--color-tech-border);
+}
+html[data-color-mode="light"] .extruded-btn:hover {
+  background: var(--color-elevated-hover);
+}
+
+/* ── Keyframe Animations ───────────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.7; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.3); }
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes mic-bar-1 { 0%, 100% { height: 6px; } 50% { height: 18px; } }
+@keyframes mic-bar-2 { 0%, 100% { height: 10px; } 50% { height: 24px; } }
+@keyframes mic-bar-3 { 0%, 100% { height: 4px; } 50% { height: 20px; } }
+@keyframes mic-bar-4 { 0%, 100% { height: 8px; } 50% { height: 16px; } }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes reboot-scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+@keyframes type-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── Base Reset ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #08080a;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* ── Outer App Window Frame ────────────────────────────────────────────── */
+.app-frame {
+  width: 100%;
+  height: 100%;
+  max-width: 1400px;
+  max-height: 900px;
+  background: var(--color-surface);
+  border: 2px solid rgba(110, 100, 240, 0.7);
+  box-shadow:
+    0 0 25px rgba(90, 80, 220, 0.25),
+    inset 0 0 15px rgba(0, 0, 0, 0.9);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 160, 165, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 160, 165, 0.45);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+
+/* ── Skeuomorphic Utility Classes ──────────────────────────────────────── */
+
+/* Recessed tray / inset card */
+.recessed-tray {
+  background: var(--color-recessed);
+  box-shadow:
+    inset 2px 2px 5px rgba(0, 0, 0, 0.7),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-tech-border);
+  border-radius: var(--radius-md);
+}
+
+/* Extruded tactile button */
+.extruded-btn {
+  background: var(--color-elevated);
+  box-shadow:
+    2px 2px 4px rgba(0, 0, 0, 0.5),
+    -1px -1px 2px rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-tech-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.extruded-btn:hover {
+  background: var(--color-elevated-hover);
+}
+.extruded-btn:active {
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.6),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.04);
+  transform: translateY(1px);
+}
+
+/* Nav button active recessed state */
+.nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.nav-btn:hover {
+  background: rgba(140, 160, 165, 0.08);
+  border-color: var(--color-tech-border);
+}
+.nav-btn.active {
+  background: var(--color-recessed);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.6),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.04);
+  border-color: var(--color-tech-border-strong);
+}
+
+/* Text Glow Effects */
+.cyan-glow {
+  color: var(--color-cyan-fix);
+  text-shadow: 0 0 10px var(--color-cyan-glow);
+}
+
+/* HUD Corner Framing Brackets */
+.hud-corner-tl::before {
+  content: '';
+  position: absolute;
+  top: 12px; left: 12px;
+  width: 24px; height: 24px;
+  border-top: 2px solid var(--accent-color, var(--color-cyan-dim));
+  border-left: 2px solid var(--accent-color, var(--color-cyan-dim));
+  opacity: 0.45;
+}
+.hud-corner-br::after {
+  content: '';
+  position: absolute;
+  bottom: 12px; right: 12px;
+  width: 24px; height: 24px;
+  border-bottom: 2px solid var(--accent-color, var(--color-cyan-dim));
+  border-right: 2px solid var(--accent-color, var(--color-cyan-dim));
+  opacity: 0.45;
+}
+
+/* Dot grid background texture */
+.dot-grid-bg {
+  background-image: radial-gradient(rgba(140, 160, 165, 0.12) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Status Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-tech-border);
+}
+
+/* Mic Equalizer bar */
+.mic-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent-color, var(--color-cyan-dim));
+  transition: height 0.1s ease;
+}
+
+/* Monospaced Tech Label */
+.tech-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Fullscreen Reboot Overlay */
+.reboot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  background: #08080a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.reboot-overlay .scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-color, var(--color-cyan-dim)), transparent);
+  animation: reboot-scan 2s linear infinite;
+  opacity: 0.35;
+}
+
+/* Range sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--color-recessed);
+  border-radius: 3px;
+  outline: none;
+  border: 1px solid var(--color-tech-border);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color, var(--color-cyan-dim));
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-glow, var(--color-cyan-glow));
+}
+
+/* Custom Toggle Switch */
+.toggle-switch {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  background: var(--color-recessed);
+  border: 1px solid var(--color-tech-border);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  transition: all 0.2s ease;
+}
+.toggle-switch.active {
+  border-color: var(--accent-color, var(--color-cyan-dim));
+  box-shadow: 0 0 6px var(--accent-glow, var(--color-cyan-glow));
+}
+.toggle-switch.active::after {
+  left: 22px;
+  background: var(--accent-color, var(--color-cyan-dim));
+  box-shadow: 0 0 6px var(--accent-glow, var(--color-cyan-glow));
+}
+
+/* Typing cursor animation */
+.type-cursor::after {
+  content: '_';
+  animation: type-cursor 0.8s step-end infinite;
+}

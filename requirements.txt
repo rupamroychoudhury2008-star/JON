@@ -1,0 +1,17 @@
+# ── JON AI Assistant — Dependencies ──
+# Core
+pyyaml>=6.0
+requests>=2.31
+psutil>=5.9
+python-dotenv>=1.0
+pydantic>=2.0
+
+# Voice I/O
+pyttsx3>=2.90
+SpeechRecognition>=3.10
+
+# Browser Automation (optional — install Playwright browsers separately)
+# playwright>=1.40
+
+# Markdown rendering
+markdown>=3.5
