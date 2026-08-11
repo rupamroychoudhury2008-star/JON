@@ -32,6 +32,10 @@ def _log(msg: str):
 def find_executable(app_name: str) -> Optional[str]:
     """Dynamically resolves absolute executable path for a Windows application."""
     target = app_name.lower().strip()
+    for conj in [" and write ", " and type ", " and enter ", " and add ", " and calculate ", " and do ", " and press ", " and input ", " write ", " type ", " enter ", " add ", " calculate "]:
+        if conj in target:
+            target = target.split(conj, 1)[0].strip()
+            break
     _log(f"Resolving executable for target '{target}'...")
 
     exe_map = {

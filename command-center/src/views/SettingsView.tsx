@@ -175,8 +175,7 @@ export default function SettingsView() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4 text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
           {[
             ['APP TITLE', 'JON Command Center'],
-            ['VERSION', 'v4.2.1-stable'],
-            ['AI MODEL', 'Gemini 3.6 Flash'],
+            ['VERSION', 'v5.0-obsidian'],
             ['BACKEND API', 'POST /api/command'],
             ['UI ENGINE', 'React + Tailwind v4'],
             ['CANVAS', 'WebGL2 GLSL ES 3.0'],

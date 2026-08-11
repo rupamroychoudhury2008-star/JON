@@ -24,7 +24,7 @@ const LOG_TEMPLATES: Omit<LogEntry, 'id' | 'timestamp'>[] = [
   { category: 'SYS', level: 'INFO', message: 'Heartbeat check — all subsystems nominal', details: 'Core load: 24.1%' },
   { category: 'NET', level: 'SUCCESS', message: 'Packet round-trip: 14ms — jitter: 2.1ms', details: 'Uplink frequency: 28.5 GHz' },
   { category: 'VOICE', level: 'DEBUG', message: 'PCM buffer flush — 256 samples processed @ 48kHz', details: 'Audio sync status: OK' },
-  { category: 'AI', level: 'INFO', message: 'Neural pipeline idle — await queue: 0', details: 'Gemini Flash endpoint active' },
+  { category: 'AI', level: 'INFO', message: 'Neural pipeline idle — await queue: 0', details: 'Neural pipeline active' },
   { category: 'SEC', level: 'SUCCESS', message: 'Firewall scan complete — 0 threats detected', details: 'Encryption: Omega-7 AES-256' },
   { category: 'NET', level: 'WARN', message: 'Orbital transceiver signal jitter: 34.2 dB', details: 'SNR threshold warning' },
 ];

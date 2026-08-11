@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useWebSpeech, type MicPermissionState } from '../hooks/useWebSpeech';
 
 export type ViewId =
   | 'voice'
   | 'session'
+  | 'tools'
+  | 'memory'
   | 'metrics'
   | 'logs'
+  | 'system'
   | 'appearance'
   | 'connectivity'
   | 'diagnostics'
@@ -24,6 +28,7 @@ export interface ToolResultEntry {
   message: string;
   error?: string;
   data?: Record<string, any>;
+  durationMs?: number;
 }
 
 export interface SessionEntry {
@@ -32,16 +37,23 @@ export interface SessionEntry {
   text: string;
   timestamp: number;
   latencyMs?: number;
+  pathHandled?: string;
   toolResults?: ToolResultEntry[];
 }
 
 export interface LogEntry {
   id: string;
   timestamp: number;
-  category: 'SYS' | 'VOICE' | 'NET' | 'SEC' | 'AI';
+  category: 'SYS' | 'VOICE' | 'NET' | 'SEC' | 'AI' | 'TOOL';
   level: 'INFO' | 'WARN' | 'ERROR' | 'SUCCESS' | 'DEBUG';
   message: string;
   details?: string;
+}
+
+export interface VaultNote {
+  path: string;
+  snippet: string;
+  frontmatter: Record<string, any>;
 }
 
 export interface AppSettings {
@@ -64,6 +76,11 @@ export interface AppState {
   logs: LogEntry[];
   addLog: (entry: Omit<LogEntry, 'id'>) => void;
   clearLogs: () => void;
+  notes: VaultNote[];
+  isLoadingNotes: boolean;
+  fetchNotes: () => Promise<void>;
+  promoteMemory: () => Promise<{ success: boolean; message: string }>;
+  allExecutedTools: ToolResultEntry[];
   theme: ThemePalette;
   setTheme: (theme: ThemePalette) => void;
   colorMode: ColorMode;
@@ -79,6 +96,16 @@ export interface AppState {
   setIsSidebarExpanded: (expanded: boolean) => void;
   stopAssistantSpeech: () => void;
   processCommand: (text: string) => Promise<void>;
+
+  // Single Shared Voice Controller Exposed via Context
+  isMicListening: boolean;
+  speechTranscript: string;
+  startMicListening: () => void;
+  stopMicListening: () => void;
+  isSpeechSupported: boolean;
+  wakeWordDetected: boolean;
+  micPermission: MicPermissionState;
+  requestMicPermission: () => Promise<boolean>;
 }
 
 export const THEME_COLORS: Record<ThemePalette, { primary: string; fix: string; glow: string; subtle: string }> = {
@@ -101,6 +128,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE');
   const [sessionHistory, setSessionHistory] = useState<SessionEntry[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>(() => generateInitialLogs());
+  const [notes, setNotes] = useState<VaultNote[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [allExecutedTools, setAllExecutedTools] = useState<ToolResultEntry[]>([]);
   const [theme, setThemeState] = useState<ThemePalette>('cyan');
   const [colorMode, setColorModeState] = useState<ColorMode>(() => {
     return (localStorage.getItem('jon_color_mode') as ColorMode) || 'dark';
@@ -116,7 +146,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     particleSpeed: 1.0,
     audioVolume: 0.7,
   });
-
 
   const setColorMode = useCallback((mode: ColorMode) => {
     setColorModeState(mode);
@@ -144,43 +173,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearLogs = useCallback(() => setLogs([]), []);
 
-  const stopAssistantSpeech = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    setVoiceState('IDLE');
-    addLog({
-      timestamp: Date.now(),
-      category: 'VOICE',
-      level: 'INFO',
-      message: 'TRANSMISSION ABORTED — Operator interrupted response speech.',
-    });
-  }, [addLog]);
-
-  // Global Escape key listener to stop response speech instantly
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (voiceState === 'SPEAKING' || (window.speechSynthesis && window.speechSynthesis.speaking))) {
-        stopAssistantSpeech();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [voiceState, stopAssistantSpeech]);
-
-  const setTheme = useCallback((t: ThemePalette) => {
-    setThemeState(t);
-    const colors = THEME_COLORS[t];
-    document.documentElement.style.setProperty('--accent-color', colors.primary);
-    document.documentElement.style.setProperty('--accent-fix', colors.fix);
-    document.documentElement.style.setProperty('--accent-glow', colors.glow);
-    document.documentElement.style.setProperty('--accent-subtle', colors.subtle);
-  }, []);
-
-  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...partial }));
-  }, []);
-
   const triggerReboot = useCallback(() => {
     setIsRebooting(true);
     addLog({
@@ -202,6 +194,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }, 2500);
   }, [addLog]);
+
+  // Unified Single Instance of Web Speech Hook Connected directly to processCommand
+  const speech = useWebSpeech({
+    wakeWordEnabled: settings.wakeWordEnabled,
+    onWakeWord: (cmd: string) => {
+      processCommand(cmd);
+    },
+    isAssistantSpeaking: voiceState === 'SPEAKING',
+  });
 
   const processCommand = useCallback(async (text: string) => {
     const startTime = performance.now();
@@ -231,6 +232,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveView('logs');
     } else if (lower.includes('session') || lower.includes('history')) {
       setActiveView('session');
+    } else if (lower.includes('memory') || lower.includes('vault') || lower.includes('notes')) {
+      setActiveView('memory');
+    } else if (lower.includes('tool')) {
+      setActiveView('tools');
     } else if (lower.includes('appearance') || lower.includes('theme')) {
       setActiveView('appearance');
     } else if (lower.includes('connectivity') || lower.includes('network')) {
@@ -241,6 +246,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     let responseText = '';
     let latencyMs = 0;
+    let pathHandled = '';
     let toolResults: ToolResultEntry[] | undefined = undefined;
 
     try {
@@ -254,7 +260,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         responseText = data.response || data.output || data.result || 'Command processed successfully.';
         toolResults = data.tool_results as ToolResultEntry[] | undefined;
         latencyMs = data.latency_ms || data.timing?.total_ms || Math.round(performance.now() - startTime);
-        const pathHandled = data.path_handled || data.target_llm_lane || 'Gemini 3.6 Flash';
+        pathHandled = data.path_handled || data.target_llm_lane || 'JON Core';
+
+        if (toolResults && toolResults.length > 0) {
+          setAllExecutedTools(prev => [...toolResults!, ...prev]);
+          toolResults.forEach(tr => {
+            addLog({
+              timestamp: Date.now(),
+              category: 'TOOL',
+              level: tr.success ? 'SUCCESS' : 'ERROR',
+              message: `Tool Execution [${tr.tool_name || 'UNKNOWN'}]: ${tr.message}`,
+              details: tr.error || (tr.target ? `Target: ${tr.target}` : undefined),
+            });
+          });
+        }
+
         addLog({
           timestamp: Date.now(),
           category: 'AI',
@@ -271,7 +291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       latencyMs = Math.round(performance.now() - startTime);
-      responseText = `⚠️ Backend Server Error (${err.message}). Please restart 'python server.py' in terminal and retry.`;
+      responseText = `⚠️ Backend Server Error (${err.message}). Please ensure 'python server.py' is running.`;
       addLog({
         timestamp: Date.now(),
         category: 'SYS',
@@ -280,33 +300,126 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    addToHistory({ role: 'assistant', text: responseText, timestamp: Date.now(), latencyMs, toolResults });
+    addToHistory({ role: 'assistant', text: responseText, timestamp: Date.now(), latencyMs, pathHandled, toolResults });
     setLatestResponse(responseText);
 
     if (settings.autoSpeak) {
       setVoiceState('SPEAKING');
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(responseText);
-        utterance.rate = 0.95;
-        utterance.pitch = 0.9;
-        utterance.volume = settings.audioVolume;
-        utterance.onend = () => setVoiceState('IDLE');
-        utterance.onerror = () => setVoiceState('IDLE');
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setVoiceState('IDLE');
-      }
+      speech.speak(responseText, settings.audioVolume);
     } else {
       setVoiceState('IDLE');
+      speech.resetWakeWord();
     }
-  }, [addToHistory, addLog, triggerReboot, setColorMode, settings.autoSpeak, settings.audioVolume]);
+  }, [addToHistory, addLog, triggerReboot, setColorMode, settings.autoSpeak, settings.audioVolume, speech]);
+
+  useEffect(() => {
+    if (speech.isListening || speech.wakeWordDetected) {
+      if (voiceState !== 'SPEAKING' && voiceState !== 'PROCESSING') {
+        setVoiceState('LISTENING');
+      }
+    }
+  }, [speech.isListening, speech.wakeWordDetected, voiceState]);
+
+  // Automatically re-arm passive wake word listening when assistant finishes speaking/processing
+  useEffect(() => {
+    if (!speech.isSpeaking && voiceState === 'IDLE' && settings.wakeWordEnabled && !speech.isListening) {
+      speech.resetWakeWord();
+    }
+  }, [speech.isSpeaking, voiceState, settings.wakeWordEnabled, speech.isListening, speech.resetWakeWord]);
+
+  const fetchNotes = useCallback(async () => {
+    setIsLoadingNotes(true);
+    try {
+      const res = await fetch('/api/notes');
+      if (res.ok) {
+        const data = await res.json();
+        setNotes(data.notes || []);
+        addLog({
+          timestamp: Date.now(),
+          category: 'SYS',
+          level: 'SUCCESS',
+          message: `Obsidian Vault sync complete — ${data.total || 0} notes indexed`,
+        });
+      }
+    } catch (e: any) {
+      addLog({
+        timestamp: Date.now(),
+        category: 'SYS',
+        level: 'WARN',
+        message: `Failed to fetch Obsidian Vault notes: ${e.message}`,
+      });
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  }, [addLog]);
+
+  const promoteMemory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/promote', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        addLog({
+          timestamp: Date.now(),
+          category: 'SYS',
+          level: 'SUCCESS',
+          message: `Memory Promotion executed: ${data.promoted_count || 0} items moved to LongTerm vault`,
+        });
+        await fetchNotes();
+        return { success: true, message: `Promoted ${data.promoted_count || 0} memory items to LongTerm vault.` };
+      }
+      throw new Error(`HTTP ${res.status}`);
+    } catch (e: any) {
+      addLog({
+        timestamp: Date.now(),
+        category: 'SYS',
+        level: 'ERROR',
+        message: `Memory Promotion error: ${e.message}`,
+      });
+      return { success: false, message: e.message };
+    }
+  }, [addLog, fetchNotes]);
+
+  const stopAssistantSpeech = useCallback(() => {
+    speech.stopSpeaking();
+    setVoiceState('IDLE');
+    addLog({
+      timestamp: Date.now(),
+      category: 'VOICE',
+      level: 'INFO',
+      message: 'TRANSMISSION ABORTED — Operator interrupted response speech.',
+    });
+  }, [speech, addLog]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (voiceState === 'SPEAKING' || speech.isSpeaking)) {
+        stopAssistantSpeech();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [voiceState, speech.isSpeaking, stopAssistantSpeech]);
+
+  const setTheme = useCallback((t: ThemePalette) => {
+    setThemeState(t);
+    const colors = THEME_COLORS[t];
+    document.documentElement.style.setProperty('--accent-color', colors.primary);
+    document.documentElement.style.setProperty('--accent-fix', colors.fix);
+    document.documentElement.style.setProperty('--accent-glow', colors.glow);
+    document.documentElement.style.setProperty('--accent-subtle', colors.subtle);
+  }, []);
+
+  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
+    setSettings(prev => ({ ...prev, ...partial }));
+  }, []);
 
   const contextValue: AppState = {
     activeView, setActiveView,
     voiceState, setVoiceState,
     sessionHistory, addToHistory, clearHistory,
     logs, addLog, clearLogs,
+    notes, isLoadingNotes, fetchNotes, promoteMemory,
+    allExecutedTools,
     theme, setTheme,
     colorMode, setColorMode, toggleColorMode,
     settings, updateSettings,
@@ -315,6 +428,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isSidebarExpanded, setIsSidebarExpanded,
     stopAssistantSpeech,
     processCommand,
+
+    // Expose Single Shared Voice Controller
+    isMicListening: speech.isListening,
+    speechTranscript: speech.transcript,
+    startMicListening: speech.startListening,
+    stopMicListening: speech.stopListening,
+    isSpeechSupported: speech.isSupported,
+    wakeWordDetected: speech.wakeWordDetected,
+    micPermission: speech.micPermission,
+    requestMicPermission: speech.requestMicPermission,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
@@ -323,13 +446,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 function generateInitialLogs(): LogEntry[] {
   const now = Date.now();
   const entries: Omit<LogEntry, 'id'>[] = [
-    { timestamp: now - 12000, category: 'SYS', level: 'INFO', message: 'JON COMMAND CENTER v4.2.1 — Tactical HUD Online', details: 'Core architecture: React + TypeScript + WebGL' },
-    { timestamp: now - 11000, category: 'SYS', level: 'SUCCESS', message: 'Core memory banks initialized — 16384 MB allocated', details: 'ECC RAM check passed' },
-    { timestamp: now - 10000, category: 'NET', level: 'INFO', message: 'Network interfaces enumerated — eth0: UP, wlan0: UP', details: 'Gigabit Ethernet & Wi-Fi 7 online' },
-    { timestamp: now - 9000, category: 'SEC', level: 'SUCCESS', message: 'Security protocol Omega-7 engaged — AES-256-GCM', details: 'TLS 1.3 handshake verified' },
-    { timestamp: now - 8000, category: 'AI', level: 'INFO', message: 'Neural pipeline initialized — Gemini 3.6 Flash connected', details: 'Model endpoint: /api/command' },
-    { timestamp: now - 7000, category: 'VOICE', level: 'INFO', message: 'Audio subsystem online — PCM buffer: 256 samples @ 48kHz', details: 'Web Speech API interface ready' },
-    { timestamp: now - 6000, category: 'SYS', level: 'DEBUG', message: 'WebGL shader compiler: GLSL ES 3.0 fragment linked OK', details: 'Shader particle density: 1000' },
+    { timestamp: now - 12000, category: 'SYS', level: 'INFO', message: 'JON OBSIDIAN COMMAND CORE v5.0 — Systems Online', details: 'Core architecture: React + TypeScript + GLSL ES 3.0' },
+    { timestamp: now - 11000, category: 'SYS', level: 'SUCCESS', message: 'Memory registers verified — 16384 MB allocated', details: 'Obsidian ShortTerm & LongTerm memory vaults connected' },
+    { timestamp: now - 10000, category: 'NET', level: 'INFO', message: 'Uplink interfaces active — eth0: 10Gbit, wlan0: Wi-Fi 7', details: 'REST gateway: http://localhost:8000/api/command' },
+    { timestamp: now - 9000, category: 'SEC', level: 'SUCCESS', message: 'Security protocol Omega-7 active — AES-256-GCM', details: 'TLS 1.3 handshake verified' },
+    { timestamp: now - 8000, category: 'AI', level: 'INFO', message: 'Neural pipeline initialized — JON Core connected', details: 'Model endpoint: /api/command' },
+    { timestamp: now - 7000, category: 'VOICE', level: 'INFO', message: 'Audio synthesis subsystem online — Web Speech API active', details: 'Synthetic profile: Zephyr' },
   ];
   return entries.map(e => ({ ...e, id: crypto.randomUUID() }));
 }

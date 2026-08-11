@@ -1,78 +1,47 @@
-import { useEffect } from 'react';
-import { AppProvider, useApp, THEME_COLORS } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import TopAppBar from './components/TopAppBar';
 import SideNavBar from './components/SideNavBar';
 import MainContent from './components/MainContent';
-import MobileBottomDrawer from './components/MobileBottomDrawer';
+import CommandDock from './components/CommandDock';
 
 function AppShell() {
   const { isRebooting, isSidebarExpanded } = useApp();
 
-  useEffect(() => {
-    const colors = THEME_COLORS.cyan;
-    document.documentElement.style.setProperty('--accent-color', colors.primary);
-    document.documentElement.style.setProperty('--accent-fix', colors.fix);
-    document.documentElement.style.setProperty('--accent-glow', colors.glow);
-    document.documentElement.style.setProperty('--accent-subtle', colors.subtle);
-  }, []);
-
   return (
-    <div className="app-frame relative flex flex-col overflow-hidden">
-      {/* Global Reboot Overlay */}
+    <div className="flex h-screen w-screen bg-[var(--color-obsidian-bg)] text-[var(--color-text-primary)] font-sans antialiased overflow-hidden relative">
+      {/* Fullscreen Core Reboot Overlay */}
       {isRebooting && (
         <div className="reboot-overlay">
           <div className="scan-line" />
-          <div className="relative flex items-center justify-center w-24 h-24">
-            <div
-              className="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin"
-              style={{
-                borderColor: 'var(--accent-color, var(--color-cyan-dim))',
-                borderTopColor: 'transparent',
-                boxShadow: '0 0 20px var(--accent-glow, rgba(0,219,231,0.5))',
-              }}
-            />
-            <span
-              className="material-symbols-outlined text-3xl animate-pulse"
-              style={{ color: 'var(--accent-fix, var(--color-cyan-fix))' }}
-            >
-              restart_alt
-            </span>
-          </div>
-
-          <p
-            className="text-base font-bold tracking-[0.22em] type-cursor uppercase text-center px-4"
-            style={{
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--accent-fix, var(--color-cyan-fix))',
-              textShadow: '0 0 16px var(--accent-glow, rgba(0,219,231,0.5))',
-            }}
-          >
-            REBOOTING JON COMMAND CORE
+          <div className="w-12 h-12 rounded-full border-2 border-[var(--accent-color)] border-t-transparent animate-spin" />
+          <p className="text-sm font-bold font-mono tracking-[0.2em] text-[var(--accent-fix)] animate-pulse">
+            REBOOTING JON COMMAND CORE...
           </p>
-          <p className="tech-label" style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-            FLUSHING MEMORY REGISTERS • REINITIALIZING SUBSYSTEMS
-          </p>
+          <p className="tech-label text-[0.6rem]">REINITIALIZING NEURAL PATHWAYS & MEMORY REGISTERS</p>
         </div>
       )}
 
-      {/* Full-Height Left Sidebar (top-0 to bottom-0 fixed) */}
+      {/* Left Navigation Rail */}
       <SideNavBar />
 
-      {/* Main Right Area: Dynamic left margin shifts & resizes page smoothly without overlap */}
+      {/* Main Workspace Frame */}
       <div
-        className="flex-1 flex flex-col h-full overflow-hidden transition-all duration-300 pb-[var(--mobile-drawer-height)] md:pb-0"
+        className="flex flex-col flex-1 h-full min-h-0 overflow-hidden transition-all duration-300"
         style={{
-          marginLeft: isSidebarExpanded ? '240px' : '72px',
+          marginLeft: typeof window !== 'undefined' && window.innerWidth >= 768
+            ? (isSidebarExpanded ? '240px' : '72px')
+            : '0',
         }}
       >
+        {/* Top System Telemetry Bar (Row 1) */}
         <TopAppBar />
-        <div className="flex-1 overflow-hidden">
-          <MainContent />
-        </div>
-      </div>
 
-      {/* Mobile Drawer */}
-      <MobileBottomDrawer />
+        {/* Dynamic Central Subsystem View (Row 2 - Constrained & Internal Scroll) */}
+        <MainContent />
+
+        {/* Permanent Reserved Bottom Command Control Dock (Row 3 - Fixed flex-shrink-0) */}
+        <CommandDock />
+      </div>
     </div>
   );
 }

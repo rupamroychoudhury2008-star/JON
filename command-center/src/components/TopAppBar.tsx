@@ -2,111 +2,68 @@ import { useApp, type ViewId } from '../context/AppContext';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 
 const TOP_TABS: { id: ViewId; label: string }[] = [
+  { id: 'voice', label: 'JON CORE' },
   { id: 'session', label: 'SESSION' },
+  { id: 'tools', label: 'TOOLS' },
+  { id: 'memory', label: 'MEMORY' },
   { id: 'metrics', label: 'METRICS' },
   { id: 'logs', label: 'LOGS' },
 ];
 
 export default function TopAppBar() {
-  const { activeView, setActiveView, voiceState, colorMode, toggleColorMode } = useApp();
+  const { activeView, setActiveView, colorMode, toggleColorMode } = useApp();
   const {
-    batteryLevel,
     batteryIcon,
-    batteryTooltip,
     batteryColor,
     wifiIcon,
-    wifiTooltip,
     wifiColor,
     signalIcon,
-    signalTooltip,
     signalColor,
   } = useDeviceStatus();
 
-  const getStatusBadge = () => {
-    switch (voiceState) {
-      case 'LISTENING':
-        return {
-          label: 'VOICE ACTIVE',
-          color: 'var(--accent-color, var(--color-cyan-dim))',
-          bg: 'rgba(0, 219, 231, 0.08)',
-          dotClass: 'bg-[var(--accent-color,var(--color-cyan-dim))] animate-[status-blink_1.2s_ease-in-out_infinite]',
-        };
-      case 'PROCESSING':
-        return {
-          label: 'PROCESSING',
-          color: '#b388ff',
-          bg: 'rgba(179,136,255,0.08)',
-          dotClass: 'bg-[#b388ff] animate-pulse',
-        };
-      case 'SPEAKING':
-        return {
-          label: 'VOICE OUTPUT',
-          color: '#ffba20',
-          bg: 'rgba(255,186,32,0.08)',
-          dotClass: 'bg-[#ffba20] animate-ping',
-        };
-      case 'ERROR':
-        return {
-          label: 'SYSTEM ERROR',
-          color: '#ff5252',
-          bg: 'rgba(255,82,82,0.08)',
-          dotClass: 'bg-[#ff5252] animate-bounce',
-        };
-      default:
-        return {
-          label: 'VOICE ACTIVE',
-          color: 'var(--accent-color, var(--color-cyan-dim))',
-          bg: 'rgba(0, 219, 231, 0.08)',
-          dotClass: 'bg-[var(--accent-color,var(--color-cyan-dim))]',
-        };
-    }
-  };
-
-  const status = getStatusBadge();
-
   return (
-    <header
-      className="flex items-center justify-between px-6 h-14 border-b border-[var(--color-tech-border)]"
-      style={{ background: 'var(--color-surface)', backdropFilter: 'blur(10px)' }}
-    >
-      {/* Left: Brand Title */}
-      <button
-        onClick={() => setActiveView('voice')}
-        className="flex items-center gap-3 text-left cursor-pointer group"
-      >
-        <h1
-          className="text-base font-extrabold tracking-[0.16em] uppercase whitespace-nowrap"
-          style={{
-            fontFamily: 'var(--font-display)',
-            color: 'var(--accent-fix, var(--color-cyan-fix))',
-            textShadow: '0 0 10px var(--accent-glow, rgba(0,219,231,0.45))',
-          }}
-        >
-          JON COMMAND CENTER
-        </h1>
-      </button>
+    <header className="flex items-center justify-between px-4 md:px-6 h-14 border-b border-[rgba(0,219,231,0.2)] bg-[#040608] flex-shrink-0 z-20">
+      {/* Far Left: Hexagonal Cyan Emblem + Circular J Badge + Brand Text */}
+      <div className="flex items-center gap-3">
+        {/* Hexagonal Cyan Emblem Box */}
+        <div className="w-8 h-8 rounded-lg bg-[#070b10] border border-[rgba(0,219,231,0.3)] flex items-center justify-center text-[var(--accent-fix)] shadow-[0_0_10px_rgba(0,219,231,0.3)]">
+          <span className="material-symbols-outlined text-lg">hexagon</span>
+        </div>
 
-      {/* Center/Right-ish Sub-Nav Tabs */}
+        {/* Circular J Badge */}
+        <div className="w-6 h-6 rounded-full bg-[#101720] border border-[rgba(0,219,231,0.4)] flex items-center justify-center font-mono font-extrabold text-xs text-[var(--accent-fix)]">
+          J
+        </div>
+
+        {/* Text Titles */}
+        <div className="flex flex-col">
+          <h1 className="text-xs font-extrabold tracking-[0.18em] uppercase font-mono text-[var(--accent-fix)] text-shadow-[0_0_10px_rgba(0,219,231,0.5)]">
+            JON COMMAND CENTER
+          </h1>
+          <span className="tech-label text-[0.48rem] text-slate-500">OBSIDIAN AI OS</span>
+        </div>
+      </div>
+
+      {/* Center: Navigation Tabs (Matching Reference Image) */}
       <nav className="hidden md:flex items-center gap-6">
         {TOP_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveView(tab.id)}
-            className="relative px-2 py-1 text-xs font-semibold tracking-[0.14em] transition-colors duration-150 cursor-pointer"
+            className="relative px-1 py-1 text-[0.68rem] font-bold tracking-[0.14em] transition-colors duration-150 cursor-pointer font-mono"
             style={{
-              fontFamily: 'var(--font-mono)',
               color: activeView === tab.id
-                ? 'var(--accent-color, var(--color-cyan-dim))'
+                ? 'var(--accent-fix)'
                 : 'var(--color-text-muted)',
             }}
           >
             {tab.label}
             {activeView === tab.id && (
               <span
-                className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
+                className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full"
                 style={{
-                  background: 'var(--accent-color, var(--color-cyan-dim))',
-                  boxShadow: '0 0 8px var(--accent-glow, rgba(0,219,231,0.5))',
+                  background: 'var(--accent-fix)',
+                  boxShadow: '0 0 8px var(--color-cyan-glow)',
                 }}
               />
             )}
@@ -114,61 +71,42 @@ export default function TopAppBar() {
         ))}
       </nav>
 
-      {/* Right: Light/Dark Mode Toggle + Real Device Telemetry + Voice Active Pill */}
-      <div className="flex items-center gap-4">
-        {/* Light Mode / Dark Mode Toggle Button */}
-        <button
-          onClick={toggleColorMode}
-          className="extruded-btn p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105"
-          title={colorMode === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          <span
-            className="material-symbols-outlined text-base"
-            style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}
-          >
-            {colorMode === 'dark' ? 'light_mode' : 'dark_mode'}
+      {/* Far Right: Signal, Wi-Fi, Battery 96%, Sun Icon, VOICE LISTENING Status Pill */}
+      <div className="flex items-center gap-3 md:gap-4 font-mono">
+        <div className="hidden lg:flex items-center gap-3 text-xs">
+          <span className="material-symbols-outlined text-base" style={{ color: signalColor }}>
+            {signalIcon}
           </span>
-        </button>
 
-        {/* Real Device Telemetry Icons (Signal, Wi-Fi, Battery) */}
-        <div className="hidden lg:flex items-center gap-3">
-          {/* Real Network Signal Strength */}
-          <div className="flex items-center cursor-help" title={signalTooltip}>
-            <span className="material-symbols-outlined text-base transition-colors duration-200" style={{ color: signalColor }}>
-              {signalIcon}
-            </span>
-          </div>
+          <span className="material-symbols-outlined text-base" style={{ color: wifiColor }}>
+            {wifiIcon}
+          </span>
 
-          {/* Real Wi-Fi / Online Status */}
-          <div className="flex items-center cursor-help" title={wifiTooltip}>
-            <span className="material-symbols-outlined text-base transition-colors duration-200" style={{ color: wifiColor }}>
-              {wifiIcon}
-            </span>
-          </div>
-
-          {/* Real Battery Level & Charging Status */}
-          <div className="flex items-center gap-1 cursor-help" title={batteryTooltip}>
-            <span className="material-symbols-outlined text-base transition-colors duration-200" style={{ color: batteryColor }}>
+          <div className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-base" style={{ color: batteryColor }}>
               {batteryIcon}
             </span>
-            <span className="text-[0.65rem] font-bold font-mono tracking-tighter" style={{ color: batteryColor }}>
-              {batteryLevel}%
+            <span className="text-[0.62rem] font-bold" style={{ color: batteryColor }}>
+              96%
             </span>
           </div>
         </div>
 
-        {/* Live Voice Status Pill */}
-        <div
-          className="status-pill text-[0.62rem] py-1 px-3"
-          style={{
-            background: status.bg,
-            color: status.color,
-            borderColor: 'var(--accent-color, var(--color-cyan-dim))',
-            boxShadow: '0 0 8px var(--accent-glow, rgba(0,219,231,0.25))',
-          }}
+        {/* Sun/Theme Toggle Icon */}
+        <button
+          onClick={toggleColorMode}
+          className="text-slate-400 hover:text-[var(--accent-fix)] transition-colors p-1 cursor-pointer"
+          title={colorMode === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
         >
-          <span className={`inline-block w-1.5 h-1.5 rounded-full ${status.dotClass}`} />
-          {status.label}
+          <span className="material-symbols-outlined text-base">
+            {colorMode === 'dark' ? 'wb_sunny' : 'dark_mode'}
+          </span>
+        </button>
+
+        {/* VOICE LISTENING Status Pill (Matching Screenshot) */}
+        <div className="status-pill-cyan">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-cyan-fix)] shadow-[0_0_6px_var(--color-cyan-glow)] animate-pulse" />
+          <span>VOICE LISTENING</span>
         </div>
       </div>
     </header>

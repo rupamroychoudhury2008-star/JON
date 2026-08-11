@@ -128,7 +128,7 @@ class IntentRouter:
             r"\bbrowser\b", r"\bclick\b", r"\bterminal\b", r"\bcmd\b", r"\bpowershell\b",
             r"\brun command\b", r"\bexecute\b", r"\bfile explorer\b",
             r"\bnotepad\b", r"\bcalculator\b", r"\bscreenshot\b", r"\bfolder\b",
-            r"\bsearch in browser\b", r"\bgoogle search\b"
+            r"\bsearch in browser\b", r"\bgoogle search\b", r"\bwrite\b", r"\btype\b", r"\btypewrite\b"
         ]
         if any(re.search(p, lower_text) for p in automation_keywords):
             return "device_automation"
@@ -153,8 +153,8 @@ class IntentRouter:
         
         if intent == "device_automation":
             # Very high confidence patterns
-            strong_patterns = ["open ", "close ", "launch ", "run command ", "open app "]
-            if any(lower.startswith(p) for p in strong_patterns):
+            strong_patterns = ["open ", "close ", "launch ", "run command ", "open app ", "write ", "type "]
+            if any(lower.startswith(p) for p in strong_patterns) or " inside " in lower or " in notepad" in lower:
                 return 0.98
             return 0.85
 

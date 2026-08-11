@@ -1,83 +1,30 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { useWebSpeech } from '../hooks/useWebSpeech';
+import MicControl from './MicControl';
 
 export default function CommandBar() {
-  const { voiceState, setVoiceState, processCommand, settings, stopAssistantSpeech } = useApp();
+  const { voiceState, processCommand, stopAssistantSpeech, speechTranscript, isMicListening } = useApp();
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isAssistantSpeaking = voiceState === 'SPEAKING';
-
-  const handleWakeWordCommand = useCallback((cmd: string) => {
-    // Ignore incoming commands while assistant is actively speaking!
-    if (voiceState === 'SPEAKING') return;
-
-    setVoiceState('LISTENING');
-    const cleanCmd = cmd.trim();
-
-    if (!cleanCmd || cleanCmd.length < 2) return;
-
-    setInputText(cleanCmd);
-    processCommand(cleanCmd);
-    setTimeout(() => {
-      setInputText('');
-    }, 400);
-  }, [voiceState, setVoiceState, processCommand]);
-
-  const { isListening, transcript, startListening, stopListening, isSupported, wakeWordDetected, resetWakeWord } = useWebSpeech({
-    wakeWordEnabled: settings.wakeWordEnabled,
-    onWakeWord: (cmd: string) => {
-      handleWakeWordCommand(cmd);
-      setTimeout(() => resetWakeWord(), 500);
-    },
-    isAssistantSpeaking,
-  });
+  const isProcessing = voiceState === 'PROCESSING';
 
   useEffect(() => {
-    if ((isListening || wakeWordDetected) && voiceState !== 'SPEAKING') {
-      setVoiceState('LISTENING');
+    if (speechTranscript && isMicListening) {
+      setInputText(speechTranscript);
     }
-  }, [isListening, wakeWordDetected, voiceState, setVoiceState]);
-
-  useEffect(() => {
-    if (transcript && !wakeWordDetected && voiceState !== 'SPEAKING') {
-      setInputText(transcript);
-    }
-  }, [transcript, wakeWordDetected, voiceState]);
+  }, [speechTranscript, isMicListening]);
 
   const handleSend = () => {
     const text = inputText.trim();
-    if (!text) return;
+    if (!text || isProcessing) return;
     if (isAssistantSpeaking) {
       stopAssistantSpeech();
     }
     processCommand(text);
     setInputText('');
-    resetWakeWord();
     inputRef.current?.focus();
-  };
-
-  const handleMicToggle = () => {
-    if (isAssistantSpeaking) {
-      stopAssistantSpeech();
-      return;
-    }
-
-    if (!isSupported) {
-      alert("Web Speech API SpeechRecognition is not supported in this browser. Please type your command into the prompt input.");
-      return;
-    }
-
-    if (isListening) {
-      stopListening();
-      setVoiceState('IDLE');
-      if (inputText.trim()) {
-        setTimeout(() => handleSend(), 200);
-      }
-    } else {
-      startListening();
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -88,18 +35,13 @@ export default function CommandBar() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4">
-      <div
-        className="recessed-tray rounded-xl p-2 bg-[#1c1b1e] border border-[var(--color-tech-border-strong)]"
-        style={{
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.04)',
-        }}
-      >
-        <div className="flex items-center gap-3 px-3 py-1">
-          <span className="material-symbols-outlined text-lg text-[var(--color-text-muted)]">
-            terminal
-          </span>
+    <div className="w-full flex items-center justify-between gap-4 md:gap-6">
+      {/* Far Left: Circular Microphone Dial + Live Waveform */}
+      <MicControl />
 
+      {/* Center: Recessed Command Input Box (Matching Screenshot) */}
+      <div className="relative flex-1 flex flex-col justify-center recessed-input-box rounded-xl px-4 py-2.5 min-h-[64px]">
+        <div className="flex items-center justify-between gap-2">
           <input
             ref={inputRef}
             type="text"
@@ -108,68 +50,48 @@ export default function CommandBar() {
             onKeyDown={handleKeyDown}
             placeholder={
               isAssistantSpeaking
-                ? "JON is transmitting... Press ESC or click STOP to interrupt..."
-                : settings.wakeWordEnabled ? "Say 'Hey Jon...' -> Speak -> Waits 3s -> Executes & Mutes..." : "Type a command (e.g. open notepad, open google.com)..."
+                ? "Assistant transmitting... (Esc to stop)"
+                : isProcessing
+                ? "Analyzing command..."
+                : isMicListening
+                ? "Listening to voice input..."
+                : "Issue command to JON..."
             }
-            className="flex-1 bg-transparent border-none outline-none text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
-            style={{ fontFamily: 'var(--font-body)' }}
+            className="w-full bg-transparent border-none outline-none text-xs text-[var(--color-text-primary)] placeholder-slate-600 font-mono"
           />
 
-          {/* Mic / Stop Response Button */}
-          <button
-            type="button"
-            onClick={handleMicToggle}
-            className="relative flex items-center justify-center w-8 h-8 rounded-full cursor-pointer transition-all duration-200 active:scale-95 flex-shrink-0"
-            style={{
-              background: isAssistantSpeaking
-                ? 'radial-gradient(circle at 35% 35%, #3d1518 0%, #1c0a0c 100%)'
-                : 'radial-gradient(circle at 35% 35%, #2a2a30 0%, #161619 100%)',
-              border: isAssistantSpeaking ? '1px solid #ff5252' : '1px solid var(--accent-color, #00dbe7)',
-              boxShadow: isAssistantSpeaking
-                ? '0 0 16px rgba(255, 82, 82, 0.85), inset 0 0 8px rgba(0,0,0,0.8)'
-                : (isListening || wakeWordDetected)
-                ? '0 0 16px var(--accent-glow, rgba(0, 219, 231, 0.85)), inset 0 0 8px rgba(0,0,0,0.8)'
-                : '0 0 8px var(--accent-glow, rgba(0, 219, 231, 0.35)), inset 0 1px 1px rgba(255, 255, 255, 0.12), 2px 3px 5px rgba(0, 0, 0, 0.6)',
-            }}
-            title={isAssistantSpeaking ? "Click to STOP assistant response instantly (HotKey: Esc)" : (isListening || wakeWordDetected) ? "Listening... Click to stop" : "Voice Input (Say 'Hey Jon')"}
-          >
-            <span
-              className="material-symbols-outlined text-base transition-colors duration-200"
-              style={{
-                color: isAssistantSpeaking ? '#ff5252' : 'var(--accent-fix, #74f5ff)',
-                textShadow: isAssistantSpeaking ? '0 0 8px rgba(255, 82, 82, 0.8)' : '0 0 8px var(--accent-glow, rgba(0, 219, 231, 0.7))',
-                fontVariationSettings: "'FILL' 0, 'wght' 400",
-              }}
-            >
-              {isAssistantSpeaking ? 'stop' : 'mic'}
-            </span>
-
-            {/* Glowing Pulse Ring */}
-            {(isListening || wakeWordDetected || isAssistantSpeaking) && (
-              <span
-                className="absolute inset-0 rounded-full border opacity-75 pointer-events-none animate-ping"
-                style={{ borderColor: isAssistantSpeaking ? '#ff5252' : 'var(--accent-fix, #74f5ff)' }}
-              />
-            )}
-          </button>
-
-          {/* Cyan Send Arrow Button */}
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!inputText.trim()}
-            className="extruded-btn w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: '#242429' }}
-          >
-            <span
-              className="material-symbols-outlined text-sm"
-              style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}
-            >
-              send
-            </span>
+          {/* Three-dot menu icon on right side of input */}
+          <button type="button" className="text-slate-600 hover:text-slate-400 transition-colors p-1 cursor-pointer">
+            <span className="material-symbols-outlined text-base">more_vert</span>
           </button>
         </div>
+
+        {/* Subtext at bottom of input box */}
+        <span className="text-[0.52rem] font-mono text-slate-600 mt-1 select-none">
+          Press Enter to send • Shift + Enter for newline
+        </span>
       </div>
+
+      {/* Far Right: Large Heavy Metallic EXECUTE Button (Matching Screenshot) */}
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={!inputText.trim() || isProcessing}
+        className="relative bezel-button px-6 py-4 rounded-xl font-mono text-xs font-extrabold text-[var(--accent-fix)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2.5 h-[64px] min-w-[130px] justify-center cursor-pointer group flex-shrink-0"
+      >
+        {/* Play Triangle Icon ▷ */}
+        <span className="material-symbols-outlined text-lg text-[var(--accent-fix)] group-hover:scale-110 transition-transform">
+          play_arrow
+        </span>
+        <span className="tracking-[0.16em]">EXECUTE</span>
+
+        {/* Right side grip lines / LED indicators */}
+        <div className="flex flex-col gap-1 ml-1">
+          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
+          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
+          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
+        </div>
+      </button>
     </div>
   );
 }

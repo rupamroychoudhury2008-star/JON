@@ -46,6 +46,20 @@ class JonOrchestrator:
         if len(history) > self._max_history_per_session * 2:
             self._conversation_history[session_id] = history[-self._max_history_per_session * 2:]
 
+    def _build_response_sentence(self, tool_results_list: List[Dict[str, Any]]) -> str:
+        messages = []
+        for tr in tool_results_list:
+            if isinstance(tr, dict) and tr.get("message"):
+                msg = tr.get("message")
+                if tr.get("success"):
+                    messages.append(msg)
+                else:
+                    err = f" (Error: {tr.get('error')})" if tr.get("error") else ""
+                    messages.append(f"{msg}{err}")
+        if not messages:
+            return "Task completed."
+        return "Done! " + " ".join(messages)
+
     def get_conversation_history(self, session_id: str) -> List[Dict[str, str]]:
         """Returns the conversation history for a session."""
         return list(self._conversation_history.get(session_id, []))
@@ -98,7 +112,7 @@ class JonOrchestrator:
             response_text = self._execute_offline_path(request, full_context)
 
             # Execute local device automation tools in offline mode!
-            action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+            action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "type", "typewrite", "notepad", "calc", "chrome", "browser"]
             if any(w in request.text.lower() for w in action_keywords):
                 fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
                 if fb_res:
@@ -118,6 +132,7 @@ class JonOrchestrator:
                 if cloud_res.get("tool_calls"):
                     tool_calls = cloud_res["tool_calls"]
                     exec_outcomes = []
+                    executed_tool_names = []
                     for tc in tool_calls:
                         func_info = tc.get("function", {})
                         t_name = func_info.get("name")
@@ -126,6 +141,7 @@ class JonOrchestrator:
                         except Exception:
                             t_args = {}
 
+                        executed_tool_names.append(t_name)
                         out = self.tool_executor.execute_tool(
                             tool_name=t_name,
                             args=t_args,
@@ -134,6 +150,14 @@ class JonOrchestrator:
                         exec_outcomes.append(str(out))
                         tool_results.append(out.to_dict())
 
+                    typing_keywords = ["write ", "type ", "typewrite ", "inside ", "enter "]
+                    if any(w in request.text.lower() for w in typing_keywords) and "type_text" not in executed_tool_names:
+                        fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
+                        if fb_res:
+                            fb_text, fb_tools = fb_res
+                            exec_outcomes.append(fb_text)
+                            tool_results.extend(fb_tools)
+
                     response_text = "\n".join(exec_outcomes)
                     if cloud_res.get("content"):
                         llm_txt = str(cloud_res["content"]).strip()
@@ -141,7 +165,7 @@ class JonOrchestrator:
                             response_text = f"{llm_txt}\n\n{response_text}"
                 else:
                     response_text = cloud_res.get("content", "Task completed.")
-                    action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+                    action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "type", "typewrite", "notepad", "calc", "chrome", "browser"]
                     if decision.intent == "device_automation" or any(w in request.text.lower() for w in action_keywords):
                         fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
                         if fb_res:
@@ -158,7 +182,7 @@ class JonOrchestrator:
                 # Fallback to local offline model if cloud API fails or network drops
                 path_handled = f"Offline Fallback (Cloud Error: {type(cloud_err).__name__}: {str(cloud_err)[:100]})"
                 response_text = self._execute_offline_path(request, full_context)
-                action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "notepad", "calc", "chrome", "browser"]
+                action_keywords = ["open", "launch", "start", "close", "stop", "kill", "run", "exec", "search", "read", "write", "type", "typewrite", "notepad", "calc", "chrome", "browser"]
                 if decision.intent == "device_automation" or any(w in request.text.lower() for w in action_keywords):
                     fb_res = self._fallback_parse_and_execute_tools(request.text, request.session_id)
                     if fb_res:
@@ -171,6 +195,9 @@ class JonOrchestrator:
                         tool_results.extend(fb_tools)
 
         timing["llm_execution_ms"] = round((time.time() - t0) * 1000, 1)
+
+        if tool_results and (not response_text or "✓ Tool" in response_text or "✗ Tool" in response_text):
+            response_text = self._build_response_sentence(tool_results)
 
         # 4. Save to Obsidian ShortTerm memory
         t0 = time.time()
@@ -287,6 +314,15 @@ class JonOrchestrator:
                 out = self.tool_executor.execute_tool("open_browser", {"url": url}, session_id=session_id)
                 return str(out), [out.to_dict()]
             else:
+                import re
+                m_comp = re.match(r'^([a-zA-Z0-9_\s]+?)\s+(?:and\s+)?(?:write|type|typewrite|enter|add|calculate|do|press|input|put)\s+(.+)$', target, re.IGNORECASE)
+                if m_comp:
+                    app_sub = m_comp.group(1).strip()
+                    txt_sub = m_comp.group(2).strip()
+                    out1 = self.tool_executor.execute_tool("open_app", {"name": app_sub}, session_id=session_id)
+                    out2 = self.tool_executor.execute_tool("type_text", {"text": txt_sub, "app_name": app_sub}, session_id=session_id)
+                    return f"{out1}\n{out2}", [out1.to_dict(), out2.to_dict()]
+
                 out = self.tool_executor.execute_tool("open_app", {"name": target}, session_id=session_id)
                 return str(out), [out.to_dict()]
 
@@ -310,7 +346,30 @@ class JonOrchestrator:
             out = self.tool_executor.execute_tool("read_file", {"path": path}, session_id=session_id)
             return str(out), [out.to_dict()]
 
-        # 4. Write file
+        # 4. Type / Write text into app or active window
+        if any(clean.startswith(w) for w in ["write ", "type ", "typewrite ", "enter "]) and not clean.startswith("write file ") and not clean.startswith("write code") and not clean.startswith("write a ") and not clean.startswith("write python"):
+            import re
+            m = re.match(r'^(?:write|type|typewrite|enter)\s+(.+?)\s+(?:inside|in|into)\s+(?:the\s+)?([a-zA-Z0-9_\s]+)$', clean, re.IGNORECASE)
+            if m:
+                content_text = m.group(1).strip()
+                target_app = m.group(2).strip()
+                if (content_text.startswith('"') and content_text.endswith('"')) or (content_text.startswith("'") and content_text.endswith("'")):
+                    content_text = content_text[1:-1]
+                out = self.tool_executor.execute_tool("type_text", {"text": content_text, "app_name": target_app}, session_id=session_id)
+                return str(out), [out.to_dict()]
+            else:
+                content_text = clean
+                for prefix in ["write ", "type ", "typewrite ", "enter "]:
+                    if content_text.startswith(prefix):
+                        content_text = content_text[len(prefix):].strip()
+                        break
+                if (content_text.startswith('"') and content_text.endswith('"')) or (content_text.startswith("'") and content_text.endswith("'")):
+                    content_text = content_text[1:-1]
+                if content_text:
+                    out = self.tool_executor.execute_tool("type_text", {"text": content_text}, session_id=session_id)
+                    return str(out), [out.to_dict()]
+
+        # 5. Write file
         if any(clean.startswith(w) for w in ["write file ", "create file "]):
             rest = clean
             for prefix in ["write file ", "create file "]:
@@ -355,5 +414,16 @@ class JonOrchestrator:
             if clean == app or clean == f"open {app}":
                 out = self.tool_executor.execute_tool("open_app", {"name": app}, session_id=session_id)
                 return str(out), [out.to_dict()]
+            elif clean.startswith(app) or clean.startswith(f"open {app}"):
+                rest = clean[len(app):].strip() if clean.startswith(app) else clean[len(f"open {app}"):].strip()
+                import re
+                m_rest = re.match(r'^(?:and\s+)?(?:write|type|typewrite|enter|add|calculate|do|press|input|put)\s+(.+)$', rest, re.IGNORECASE)
+                if m_rest:
+                    txt_sub = m_rest.group(1).strip()
+                    if (txt_sub.startswith('"') and txt_sub.endswith('"')) or (txt_sub.startswith("'") and txt_sub.endswith("'")):
+                        txt_sub = txt_sub[1:-1]
+                    out1 = self.tool_executor.execute_tool("open_app", {"name": app}, session_id=session_id)
+                    out2 = self.tool_executor.execute_tool("type_text", {"text": txt_sub, "app_name": app}, session_id=session_id)
+                    return f"{out1}\n{out2}", [out1.to_dict(), out2.to_dict()]
 
         return None

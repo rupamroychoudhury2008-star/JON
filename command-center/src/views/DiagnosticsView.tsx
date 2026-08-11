@@ -15,7 +15,7 @@ const INITIAL_TESTS: DiagModule[] = [
   { id: 'memory', label: 'Core Memory Integrity', icon: 'memory', status: 'passed', desc: 'ECC RAM Bank Verification', detail: '16384 MB allocated — 0 bit error count', durationMs: 120 },
   { id: 'shader', label: 'WebGL Shader Compiler', icon: 'blur_on', status: 'passed', desc: 'GLSL ES 3.0 Fragment Pipeline', detail: 'Particle field compilation OK — 60 FPS verified', durationMs: 85 },
   { id: 'audio', label: 'Audio PCM Buffer', icon: 'graphic_eq', status: 'passed', desc: 'PCM Audio Buffer & Codec Sync', detail: '256 samples @ 48kHz — 12ms roundtrip latency', durationMs: 42 },
-  { id: 'neural', label: 'Gemini Neural Pipeline', icon: 'psychology', status: 'passed', desc: 'Gemini 3.6 Flash Endpoint Verification', detail: 'Model inference connected — 97.3% response score', durationMs: 310 },
+  { id: 'neural', label: 'JON Neural Pipeline', icon: 'psychology', status: 'passed', desc: 'Neural Processing Endpoint Verification', detail: 'Model inference connected — 97.3% response score', durationMs: 310 },
   { id: 'security', label: 'Security Handshake', icon: 'shield', status: 'passed', desc: 'Omega-7 TLS Encryption Protocols', detail: 'AES-256-GCM handshake verified — key rotation 60s', durationMs: 95 },
 ];
 

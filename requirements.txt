@@ -15,3 +15,8 @@ SpeechRecognition>=3.10
 
 # Markdown rendering
 markdown>=3.5
+
+# Desktop Automation
+pyperclip>=1.8.2
+pyautogui>=0.9.54
+

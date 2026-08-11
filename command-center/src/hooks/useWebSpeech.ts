@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
+export type MicPermissionState = 'prompt' | 'granted' | 'denied';
+
 interface WebSpeechHook {
   isListening: boolean;
   transcript: string;
@@ -11,6 +13,8 @@ interface WebSpeechHook {
   isSupported: boolean;
   wakeWordDetected: boolean;
   resetWakeWord: () => void;
+  micPermission: MicPermissionState;
+  requestMicPermission: () => Promise<boolean>;
 }
 
 export function useWebSpeech(options?: {
@@ -22,12 +26,15 @@ export function useWebSpeech(options?: {
   const [transcript, setTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [wakeWordDetected, setWakeWordDetected] = useState(false);
+  const [micPermission, setMicPermission] = useState<MicPermissionState>('prompt');
 
   const recognitionRef = useRef<any>(null);
+  const isRecognizingRef = useRef(false);
+  const isStartingRef = useRef(false);
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  // Pipeline Mode: 'PASSIVE' (waiting for "Hey Jon") | 'ACTIVE' (recording command) | 'MUTED' (TTS response)
+  // Pipeline Mode: 'PASSIVE' (waiting for "Hey Jon") | 'ACTIVE' (recording command) | 'MUTED' (locked/TTS)
   const pipelineModeRef = useRef<'PASSIVE' | 'ACTIVE' | 'MUTED'>('PASSIVE');
   const accumulatedSpeechRef = useRef<string>('');
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +44,24 @@ export function useWebSpeech(options?: {
   const isSupported = typeof window !== 'undefined' && (
     'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
   );
+
+  const requestMicPermission = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMicPermission('denied');
+      return false;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Immediately release test stream tracks after verifying permission
+      stream.getTracks().forEach(track => track.stop());
+      setMicPermission('granted');
+      return true;
+    } catch (err: any) {
+      console.warn('Microphone permission check error:', err);
+      setMicPermission('denied');
+      return false;
+    }
+  }, []);
 
   const checkWakeWord = (text: string): { matches: boolean; commandPayload: string } => {
     const lower = text.toLowerCase().trim();
@@ -62,37 +87,24 @@ export function useWebSpeech(options?: {
   const safeStartRecognition = useCallback(() => {
     if (!recognitionRef.current) return;
     const isTTS = optionsRef.current?.isAssistantSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking);
-    if (isTTS || pipelineModeRef.current === 'MUTED') return;
+    if (isTTS) return;
 
-    const isPassiveAllowed = Boolean(optionsRef.current?.wakeWordEnabled) && pipelineModeRef.current === 'PASSIVE';
-    const isActiveAllowed = pipelineModeRef.current === 'ACTIVE';
+    if (isRecognizingRef.current || isStartingRef.current) return;
 
-    if (!isPassiveAllowed && !isActiveAllowed) return;
-
-    try {
-      recognitionRef.current.abort();
-    } catch {}
+    isStartingRef.current = true;
 
     if (restartRetryTimerRef.current) clearTimeout(restartRetryTimerRef.current);
 
     restartRetryTimerRef.current = setTimeout(() => {
       try {
         const isStillTTS = optionsRef.current?.isAssistantSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking);
-        if (recognitionRef.current && !isStillTTS && (pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
+        if (recognitionRef.current && !isStillTTS && !isRecognizingRef.current) {
           recognitionRef.current.start();
-          setIsListening(true);
         }
-      } catch {
-        setTimeout(() => {
-          try {
-            if (recognitionRef.current && (pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
-              recognitionRef.current.start();
-              setIsListening(true);
-            }
-          } catch {}
-        }, 300);
+      } catch (err: any) {
+        isStartingRef.current = false;
       }
-    }, 150);
+    }, 100);
   }, []);
 
   const dispatchCapturedCommand = useCallback((cmd: string) => {
@@ -105,7 +117,7 @@ export function useWebSpeech(options?: {
       silenceTimerRef.current = null;
     }
 
-    if (recognitionRef.current) {
+    if (recognitionRef.current && isRecognizingRef.current) {
       try { recognitionRef.current.stop(); } catch {}
     }
     setIsListening(false);
@@ -139,6 +151,13 @@ export function useWebSpeech(options?: {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      isRecognizingRef.current = true;
+      isStartingRef.current = false;
+      setIsListening(true);
+      setMicPermission('granted');
+    };
 
     recognition.onresult = (event: any) => {
       const isTTS = optionsRef.current?.isAssistantSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking);
@@ -189,22 +208,24 @@ export function useWebSpeech(options?: {
     };
 
     recognition.onend = () => {
+      isRecognizingRef.current = false;
+      isStartingRef.current = false;
       setIsListening(false);
       const isTTS = optionsRef.current?.isAssistantSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking);
-      if (!isTTS && (pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
+      if (!isTTS && (optionsRef.current?.wakeWordEnabled || pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
         safeStartRecognition();
       }
     };
 
     recognition.onerror = (event: any) => {
-      if (event.error === 'network') {
-        console.warn('Web Speech API requires internet connectivity for browser speech-to-text.');
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        console.warn('Speech recognition status:', event.error);
-      }
+      isRecognizingRef.current = false;
+      isStartingRef.current = false;
       setIsListening(false);
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setMicPermission('denied');
+      }
       const isTTS = optionsRef.current?.isAssistantSpeaking || (window.speechSynthesis && window.speechSynthesis.speaking);
-      if (!isTTS && (pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
+      if (!isTTS && (optionsRef.current?.wakeWordEnabled || pipelineModeRef.current === 'PASSIVE' || pipelineModeRef.current === 'ACTIVE')) {
         safeStartRecognition();
       }
     };
@@ -218,12 +239,17 @@ export function useWebSpeech(options?: {
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       if (restartRetryTimerRef.current) clearTimeout(restartRetryTimerRef.current);
+      isRecognizingRef.current = false;
+      isStartingRef.current = false;
       try { recognition.abort(); } catch {}
     };
   }, [isSupported, dispatchCapturedCommand, safeStartRecognition]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!recognitionRef.current) return;
+    const permitted = await requestMicPermission();
+    if (!permitted) return;
+
     setTranscript('');
     setWakeWordDetected(true);
     pipelineModeRef.current = 'ACTIVE';
@@ -235,7 +261,7 @@ export function useWebSpeech(options?: {
     }, 3500);
 
     safeStartRecognition();
-  }, [dispatchCapturedCommand, safeStartRecognition]);
+  }, [requestMicPermission, dispatchCapturedCommand, safeStartRecognition]);
 
   const stopListening = useCallback(() => {
     pipelineModeRef.current = 'MUTED';
@@ -246,6 +272,8 @@ export function useWebSpeech(options?: {
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch {}
     }
+    isRecognizingRef.current = false;
+    isStartingRef.current = false;
     setIsListening(false);
     setWakeWordDetected(false);
     accumulatedSpeechRef.current = '';
@@ -258,6 +286,8 @@ export function useWebSpeech(options?: {
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch {}
     }
+    isRecognizingRef.current = false;
+    isStartingRef.current = false;
     setIsListening(false);
 
     window.speechSynthesis.cancel();
@@ -298,5 +328,7 @@ export function useWebSpeech(options?: {
     isSupported,
     wakeWordDetected,
     resetWakeWord: resetToPassiveListening,
+    micPermission,
+    requestMicPermission,
   };
 }

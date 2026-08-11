@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Any, List, Optional
 from memory.obsidian_vault import ObsidianVault
-from .app_tools import open_app, close_app
+from .app_tools import open_app, close_app, type_text
 from .file_tools import read_file, write_file
 from .browser_tools import open_browser, browser_action
 from .terminal_tools import open_terminal, run_command, close_terminal
@@ -17,6 +17,21 @@ TOOLS_SCHEMA = [
                 "type": "object",
                 "properties": {"name": {"type": "string", "description": "Name of app e.g. notepad, chrome, calc"}},
                 "required": ["name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "type_text",
+            "description": "Types specified text into a targeted application (e.g. notepad, word, chrome) or active window",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to write or type into application"},
+                    "app_name": {"type": "string", "description": "Optional name of app e.g. notepad, word, chrome"}
+                },
+                "required": ["text"]
             }
         }
     },
@@ -147,6 +162,8 @@ class ToolExecutor:
         try:
             if tool_name == "open_app":
                 res = open_app(name=args.get("name", ""))
+            elif tool_name == "type_text":
+                res = type_text(text=args.get("text", ""), app_name=args.get("app_name"))
             elif tool_name == "close_app":
                 res = close_app(name=args.get("name", ""))
             elif tool_name == "read_file":
