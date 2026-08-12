@@ -30,13 +30,71 @@ INDEX_HTML = """<!DOCTYPE html>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
         
+        :root, [data-color-mode="dark"], [data-theme="dark"] {
+            --bg-body: #070a12;
+            --bg-radial-1: rgba(14, 165, 233, 0.18);
+            --bg-radial-2: rgba(139, 92, 246, 0.18);
+            --bg-radial-3: rgba(56, 189, 248, 0.08);
+            --glass-bg: rgba(15, 23, 42, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(14, 165, 233, 0.12);
+            --header-bg: rgba(30, 41, 59, 0.35);
+            --header-border: rgba(255, 255, 255, 0.08);
+            --title-color-1: #ffffff;
+            --title-color-2: #38bdf8;
+            --text-color: #f8fafc;
+            --jon-msg-bg: rgba(30, 41, 59, 0.55);
+            --jon-msg-border: rgba(255, 255, 255, 0.1);
+            --jon-msg-text: #f8fafc;
+            --code-bg: rgba(2, 6, 23, 0.7);
+            --code-text: #38bdf8;
+            --input-bar-bg: rgba(15, 23, 42, 0.45);
+            --input-field-bg: rgba(30, 41, 59, 0.5);
+            --input-field-border: rgba(255, 255, 255, 0.12);
+            --input-field-text: #f8fafc;
+            --input-placeholder: #64748b;
+            --btn-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+            --btn-border: rgba(255, 255, 255, 0.15);
+            --btn-text: #f8fafc;
+            --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+        }
+
+        [data-color-mode="light"], [data-theme="light"] {
+            --bg-body: #eef2f6;
+            --bg-radial-1: rgba(14, 165, 233, 0.12);
+            --bg-radial-2: rgba(139, 92, 246, 0.12);
+            --bg-radial-3: rgba(56, 189, 248, 0.05);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(15, 23, 42, 0.12);
+            --glass-shadow: 0 20px 50px rgba(0, 0, 0, 0.1), 0 0 30px rgba(14, 165, 233, 0.1);
+            --header-bg: rgba(241, 245, 249, 0.85);
+            --header-border: rgba(15, 23, 42, 0.08);
+            --title-color-1: #0f172a;
+            --title-color-2: #0284c7;
+            --text-color: #0f172a;
+            --jon-msg-bg: rgba(241, 245, 249, 0.95);
+            --jon-msg-border: rgba(15, 23, 42, 0.1);
+            --jon-msg-text: #0f172a;
+            --code-bg: #1e293b;
+            --code-text: #38bdf8;
+            --input-bar-bg: rgba(248, 250, 252, 0.85);
+            --input-field-bg: #ffffff;
+            --input-field-border: rgba(15, 23, 42, 0.18);
+            --input-field-text: #0f172a;
+            --input-placeholder: #94a3b8;
+            --btn-bg: linear-gradient(135deg, #ffffff, #f1f5f9);
+            --btn-border: rgba(15, 23, 42, 0.15);
+            --btn-text: #0f172a;
+            --scrollbar-thumb: rgba(15, 23, 42, 0.2);
+        }
+
         body {
-            background: #070a12;
+            background: var(--bg-body);
             background-image: 
-                radial-gradient(circle at 15% 15%, rgba(14, 165, 233, 0.18) 0%, transparent 45%),
-                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.18) 0%, transparent 45%),
-                radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08) 0%, transparent 60%);
-            color: #f8fafc;
+                radial-gradient(circle at 15% 15%, var(--bg-radial-1) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, var(--bg-radial-2) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, var(--bg-radial-3) 0%, transparent 60%);
+            color: var(--text-color);
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -44,24 +102,23 @@ INDEX_HTML = """<!DOCTYPE html>
             padding: 16px;
             overflow: hidden;
             font-size: 14px;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .glass-app {
             width: 100%;
             max-width: 900px;
             height: 94vh;
-            background: rgba(15, 23, 42, 0.55);
+            background: var(--glass-bg);
             backdrop-filter: blur(24px) saturate(190%);
             -webkit-backdrop-filter: blur(24px) saturate(190%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--glass-border);
             border-radius: 24px;
             display: flex;
             flex-direction: column;
-            box-shadow: 
-                0 30px 60px rgba(0, 0, 0, 0.55),
-                0 0 40px rgba(14, 165, 233, 0.12),
-                inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            box-shadow: var(--glass-shadow), inset 0 1px 1px rgba(255, 255, 255, 0.2);
             overflow: hidden;
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
         
         .header {
@@ -69,9 +126,15 @@ INDEX_HTML = """<!DOCTYPE html>
             justify-content: space-between;
             align-items: center;
             padding: 16px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(30, 41, 59, 0.35);
+            border-bottom: 1px solid var(--header-border);
+            background: var(--header-bg);
             backdrop-filter: blur(16px);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .title-wrap {
@@ -97,7 +160,7 @@ INDEX_HTML = """<!DOCTYPE html>
         .title {
             font-size: 1.05rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #ffffff 30%, #38bdf8 100%);
+            background: linear-gradient(135deg, var(--title-color-1) 30%, var(--title-color-2) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.01em;
@@ -151,7 +214,7 @@ INDEX_HTML = """<!DOCTYPE html>
             width: 5px;
         }
         .chat-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--scrollbar-thumb);
             border-radius: 3px;
         }
         
@@ -183,34 +246,34 @@ INDEX_HTML = """<!DOCTYPE html>
         }
 
         .jon-msg {
-            background: rgba(30, 41, 59, 0.55);
+            background: var(--jon-msg-bg);
             backdrop-filter: blur(16px);
-            color: #f8fafc;
+            color: var(--jon-msg-text);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--jon-msg-border);
             box-shadow: 
-                0 8px 24px rgba(0, 0, 0, 0.3),
+                0 8px 24px rgba(0, 0, 0, 0.15),
                 inset 0 1px 1px rgba(255, 255, 255, 0.1);
         }
 
         .msg pre {
-            background: rgba(2, 6, 23, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #38bdf8;
+            background: var(--code-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--code-text);
             padding: 12px 14px;
             border-radius: 10px;
             overflow-x: auto;
             margin: 10px 0;
             font-family: 'Consolas', 'Courier New', monospace;
             font-size: 0.86rem;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
         }
 
         .msg code {
             font-family: 'Consolas', 'Courier New', monospace;
             background: rgba(56, 189, 248, 0.15);
-            color: #38bdf8;
+            color: #0284c7;
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.88rem;
@@ -218,8 +281,8 @@ INDEX_HTML = """<!DOCTYPE html>
         
         .input-bar {
             padding: 16px 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(15, 23, 42, 0.45);
+            border-top: 1px solid var(--header-border);
+            background: var(--input-bar-bg);
             backdrop-filter: blur(20px);
             display: flex;
             gap: 12px;
@@ -228,19 +291,19 @@ INDEX_HTML = """<!DOCTYPE html>
 
         .input-field {
             flex: 1;
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: var(--input-field-bg);
+            border: 1px solid var(--input-field-border);
             border-radius: 14px;
             padding: 12px 18px;
-            color: #f8fafc;
+            color: var(--input-field-text);
             font-size: 0.92rem;
             outline: none;
             backdrop-filter: blur(12px);
             transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
-        .input-field::placeholder { color: #64748b; }
+        .input-field::placeholder { color: var(--input-placeholder); }
 
         .input-field:focus {
             border-color: rgba(56, 189, 248, 0.6);
@@ -250,11 +313,11 @@ INDEX_HTML = """<!DOCTYPE html>
         }
         
         .btn {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
             backdrop-filter: blur(12px);
             border-radius: 14px;
-            color: #f8fafc;
+            color: var(--btn-text);
             padding: 12px 20px;
             font-weight: 600;
             font-size: 0.88rem;
@@ -263,15 +326,20 @@ INDEX_HTML = """<!DOCTYPE html>
             align-items: center;
             gap: 8px;
             box-shadow: 
-                0 4px 14px rgba(0, 0, 0, 0.25),
+                0 4px 14px rgba(0, 0, 0, 0.15),
                 inset 0 1px 1px rgba(255, 255, 255, 0.2);
             transition: all 0.2s ease;
         }
 
         .btn:hover {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
-            border-color: rgba(255, 255, 255, 0.25);
+            border-color: rgba(56, 189, 248, 0.4);
             transform: translateY(-1px);
+        }
+
+        .btn-theme {
+            padding: 8px 12px;
+            font-size: 1rem;
+            border-radius: 12px;
         }
 
         .btn-primary {
@@ -311,7 +379,12 @@ INDEX_HTML = """<!DOCTYPE html>
                 <div class="logo-icon">J</div>
                 <span class="title">Jon AI</span>
             </div>
-            <span class="status" id="status-badge"><span class="dot" id="status-dot"></span><span id="status-text">ONLINE</span></span>
+            <div class="header-controls">
+                <button type="button" class="btn btn-theme" id="theme-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode">
+                    <span id="theme-icon">☀️</span>
+                </button>
+                <span class="status" id="status-badge"><span class="dot" id="status-dot"></span><span id="status-text">ONLINE</span></span>
+            </div>
         </div>
 
         <div class="chat-container" id="chat-box">
@@ -326,6 +399,32 @@ INDEX_HTML = """<!DOCTYPE html>
     </div>
 
     <script>
+        function initTheme() {
+            const savedTheme = localStorage.getItem('jon_color_mode') || localStorage.getItem('jon_theme') || 'dark';
+            document.documentElement.setAttribute('data-color-mode', savedTheme);
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-color-mode') || document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-color-mode', newTheme);
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('jon_color_mode', newTheme);
+            localStorage.setItem('jon_theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        initTheme();
+
         let recognition = null;
 
         function escapeHtml(text) {

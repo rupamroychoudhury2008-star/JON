@@ -3,9 +3,14 @@ import TopAppBar from './components/TopAppBar';
 import SideNavBar from './components/SideNavBar';
 import MainContent from './components/MainContent';
 import CommandDock from './components/CommandDock';
+import LoginPage from './views/LoginPage';
 
 function AppShell() {
-  const { isRebooting, isSidebarExpanded } = useApp();
+  const { isAuthenticated, isRebooting, isSidebarExpanded } = useApp();
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="flex h-screen w-screen bg-[var(--color-obsidian-bg)] text-[var(--color-text-primary)] font-sans antialiased overflow-hidden relative">

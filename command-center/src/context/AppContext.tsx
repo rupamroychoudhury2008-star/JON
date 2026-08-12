@@ -65,7 +65,18 @@ export interface AppSettings {
   audioVolume: number;
 }
 
+export interface UserProfile {
+  username: string;
+  role: string;
+  clearanceLevel: string;
+  loginTime: number;
+}
+
 export interface AppState {
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  login: (username: string, passcode: string, remember: boolean) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
   activeView: ViewId;
   setActiveView: (view: ViewId) => void;
   voiceState: VoiceState;
@@ -124,6 +135,17 @@ export function useApp(): AppState {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('jon_auth_user') || sessionStorage.getItem('jon_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAuthenticated = !!user;
+
   const [activeView, setActiveView] = useState<ViewId>('voice');
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE');
   const [sessionHistory, setSessionHistory] = useState<SessionEntry[]>([]);
@@ -172,6 +194,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearLogs = useCallback(() => setLogs([]), []);
+
+  const login = useCallback(async (username: string, _passcode: string, remember: boolean) => {
+    const profile: UserProfile = {
+      username: username || 'Operator',
+      role: 'Chief System Operator',
+      clearanceLevel: 'OMEGA-7',
+      loginTime: Date.now(),
+    };
+
+    const data = JSON.stringify(profile);
+    if (remember) {
+      localStorage.setItem('jon_auth_user', data);
+    } else {
+      sessionStorage.setItem('jon_auth_user', data);
+    }
+
+    setUser(profile);
+    addLog({
+      timestamp: Date.now(),
+      category: 'SEC',
+      level: 'SUCCESS',
+      message: `OPERATOR AUTHENTICATED: ${profile.username} (${profile.clearanceLevel})`,
+      details: 'Session token issued and encrypted.'
+    });
+    return { success: true };
+  }, [addLog]);
+
+  const logout = useCallback(() => {
+    const currentName = user?.username || 'Operator';
+    localStorage.removeItem('jon_auth_user');
+    sessionStorage.removeItem('jon_auth_user');
+    setUser(null);
+    addLog({
+      timestamp: Date.now(),
+      category: 'SEC',
+      level: 'WARN',
+      message: `OPERATOR LOGGED OUT: ${currentName}`,
+      details: 'Session terminated.'
+    });
+  }, [user, addLog]);
 
   const triggerReboot = useCallback(() => {
     setIsRebooting(true);
@@ -414,6 +476,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const contextValue: AppState = {
+    isAuthenticated,
+    user,
+    login,
+    logout,
     activeView, setActiveView,
     voiceState, setVoiceState,
     sessionHistory, addToHistory, clearHistory,

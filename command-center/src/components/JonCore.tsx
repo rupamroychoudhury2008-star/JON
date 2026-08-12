@@ -6,7 +6,7 @@ export default function JonCore() {
   const { voiceState, settings, updateSettings } = useApp();
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-between p-4 md:p-6 hud-corner-tl hud-corner-tr hud-corner-bl hud-corner-br border border-[rgba(0,219,231,0.15)] bg-[#040608] rounded-xl overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
+    <div className="relative w-full h-full flex flex-col justify-between p-4 md:p-6 hud-corner-tl hud-corner-tr hud-corner-bl hud-corner-br border border-[rgba(0,219,231,0.15)] bg-[var(--color-obsidian-bg)] rounded-xl overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.5)]">
 
       {/* Top Viewport Header Bar */}
       <div className="flex items-center justify-between z-20 flex-shrink-0">

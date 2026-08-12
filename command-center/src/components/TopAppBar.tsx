@@ -11,7 +11,7 @@ const TOP_TABS: { id: ViewId; label: string }[] = [
 ];
 
 export default function TopAppBar() {
-  const { activeView, setActiveView, colorMode, toggleColorMode } = useApp();
+  const { activeView, setActiveView, colorMode, toggleColorMode, user, logout } = useApp();
   const {
     batteryIcon,
     batteryColor,
@@ -22,16 +22,16 @@ export default function TopAppBar() {
   } = useDeviceStatus();
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 h-14 border-b border-[rgba(0,219,231,0.2)] bg-[#040608] flex-shrink-0 z-20">
+    <header className="flex items-center justify-between px-4 md:px-6 h-14 border-b border-[rgba(0,219,231,0.2)] bg-[var(--color-obsidian-bg)] flex-shrink-0 z-20">
       {/* Far Left: Hexagonal Cyan Emblem + Circular J Badge + Brand Text */}
       <div className="flex items-center gap-3">
         {/* Hexagonal Cyan Emblem Box */}
-        <div className="w-8 h-8 rounded-lg bg-[#070b10] border border-[rgba(0,219,231,0.3)] flex items-center justify-center text-[var(--accent-fix)] shadow-[0_0_10px_rgba(0,219,231,0.3)]">
+        <div className="w-8 h-8 rounded-lg bg-[var(--color-obsidian-layer-1)] border border-[rgba(0,219,231,0.3)] flex items-center justify-center text-[var(--accent-fix)] shadow-[0_0_10px_rgba(0,219,231,0.3)]">
           <span className="material-symbols-outlined text-lg">hexagon</span>
         </div>
 
         {/* Circular J Badge */}
-        <div className="w-6 h-6 rounded-full bg-[#101720] border border-[rgba(0,219,231,0.4)] flex items-center justify-center font-mono font-extrabold text-xs text-[var(--accent-fix)]">
+        <div className="w-6 h-6 rounded-full bg-[var(--color-obsidian-layer-2)] border border-[rgba(0,219,231,0.4)] flex items-center justify-center font-mono font-extrabold text-xs text-[var(--accent-fix)]">
           J
         </div>
 
@@ -95,13 +95,34 @@ export default function TopAppBar() {
         {/* Sun/Theme Toggle Icon */}
         <button
           onClick={toggleColorMode}
-          className="text-slate-400 hover:text-[var(--accent-fix)] transition-colors p-1 cursor-pointer"
+          className="text-[var(--color-text-muted)] hover:text-[var(--accent-fix)] transition-colors p-1 cursor-pointer"
           title={colorMode === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
         >
           <span className="material-symbols-outlined text-base">
             {colorMode === 'dark' ? 'wb_sunny' : 'dark_mode'}
           </span>
         </button>
+
+        {/* Operator Badge & Logout Button */}
+        {user && (
+          <div className="flex items-center gap-2 pl-2 border-l border-[var(--color-tech-border)]">
+            <div className="hidden sm:flex flex-col text-right">
+              <span className="text-[0.62rem] font-bold text-[var(--color-text-primary)] font-mono truncate max-w-[100px]">
+                {user.username}
+              </span>
+              <span className="text-[0.5rem] text-[var(--accent-fix)] font-mono font-semibold">
+                {user.clearanceLevel}
+              </span>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+              title="Log out operator session"
+            >
+              <span className="material-symbols-outlined text-base">logout</span>
+            </button>
+          </div>
+        )}
 
         {/* VOICE LISTENING Status Pill (Matching Screenshot) */}
         <div className="status-pill-cyan">

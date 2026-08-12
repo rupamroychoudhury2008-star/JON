@@ -44,14 +44,83 @@
   --radius-xl: 20px;
 }
 
-/* ── Light Mode Override ────────────────────────────────────────────────── */
+/* ── Light Mode Override System ────────────────────────────────────────── */
 html[data-color-mode="light"] {
-  --color-obsidian-bg: #cbd5e1;
-  --color-obsidian-layer-1: #e2e8f0;
-  --color-obsidian-layer-2: #f1f5f9;
-  --color-obsidian-layer-3: #ffffff;
+  --color-obsidian-bg: #eef2f6;
+  --color-obsidian-layer-1: #ffffff;
+  --color-obsidian-layer-2: #f8fafc;
+  --color-obsidian-layer-3: #f1f5f9;
+  --color-obsidian-elevated: #ffffff;
+
+  --color-cyan-dim: #0284c7;
+  --color-cyan-fix: #0369a1;
+  --color-cyan-glow: rgba(2, 132, 199, 0.25);
+  --color-cyan-subtle: rgba(2, 132, 199, 0.08);
+  --color-cyan-border: rgba(2, 132, 199, 0.25);
+  --color-cyan-border-bright: rgba(2, 132, 199, 0.5);
+
+  --color-amber: #d97706;
+  --color-emerald: #059669;
+
+  --color-tech-border: rgba(2, 132, 199, 0.15);
+  --color-tech-border-strong: rgba(2, 132, 199, 0.3);
+  --color-bezel-metal: rgba(148, 163, 184, 0.4);
+
   --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
 }
+
+/* Light Mode Component Overrides */
+html[data-color-mode="light"] .obsidian-chassis {
+  background: #eef2f6;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(2, 132, 199, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 100%, rgba(2, 132, 199, 0.04) 0%, transparent 60%);
+  border-color: rgba(2, 132, 199, 0.25);
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.9), 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+html[data-color-mode="light"] .tactile-sidebar-panel {
+  background: rgba(255, 255, 255, 0.95);
+  border-right-color: var(--color-tech-border-strong);
+}
+
+html[data-color-mode="light"] .recessed-input-box {
+  background: #ffffff;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.06);
+  border-color: rgba(2, 132, 199, 0.3);
+}
+
+html[data-color-mode="light"] .bezel-button {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: rgba(2, 132, 199, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+html[data-color-mode="light"] .bezel-button:hover {
+  border-color: rgba(2, 132, 199, 0.6);
+  box-shadow: 0 0 14px rgba(2, 132, 199, 0.2), inset 0 1px 1px rgba(255, 255, 255, 1);
+}
+
+html[data-color-mode="light"] .recessed-tray {
+  background: #f1f5f9;
+  border-color: rgba(2, 132, 199, 0.25);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+html[data-color-mode="light"] .extruded-btn {
+  background: #ffffff;
+  border-color: rgba(2, 132, 199, 0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+html[data-color-mode="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(2, 132, 199, 0.25);
+}
+html[data-color-mode="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(2, 132, 199, 0.45);
+}
+
 
 /* ── Base Reset ────────────────────────────────────────────────────────── */
 *, *::before, *::after {

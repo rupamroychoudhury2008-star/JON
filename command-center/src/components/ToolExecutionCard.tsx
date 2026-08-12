@@ -15,7 +15,7 @@ export default function ToolExecutionCard({ tool, latencyMs }: ToolExecutionCard
       className="recessed-tray rounded-lg p-3.5 my-2 border-l-4 transition-all duration-200"
       style={{
         borderLeftColor: isSuccess ? '#00e676' : '#ff5252',
-        background: 'rgba(8, 10, 12, 0.85)',
+        background: 'var(--color-obsidian-layer-1)',
         backdropFilter: 'blur(12px)',
       }}
     >

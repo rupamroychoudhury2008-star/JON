@@ -24,7 +24,7 @@ export default function SideNavBar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 bottom-0 z-40 flex flex-col justify-between p-2 md:p-3 tactile-sidebar-panel transition-all duration-300 select-none border-r border-[rgba(0,219,231,0.15)] bg-[#040608]"
+      className="fixed left-0 top-0 bottom-0 z-40 flex flex-col justify-between p-2 md:p-3 tactile-sidebar-panel transition-all duration-300 select-none border-r border-[rgba(0,219,231,0.15)] bg-[var(--color-obsidian-bg)]"
       style={{
         width: typeof window !== 'undefined' && window.innerWidth >= 768
           ? (isSidebarExpanded ? '200px' : '72px')
@@ -35,7 +35,7 @@ export default function SideNavBar() {
       <div className="flex items-center justify-between px-2 py-2 mb-2 flex-shrink-0">
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-          className="w-full flex items-center justify-center p-2 rounded-lg bg-[#070b10] border border-[rgba(0,219,231,0.2)] text-[var(--accent-fix)] hover:border-[var(--color-cyan-fix)] transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center p-2 rounded-lg bg-[var(--color-obsidian-layer-1)] border border-[rgba(0,219,231,0.2)] text-[var(--accent-fix)] hover:border-[var(--color-cyan-fix)] transition-colors cursor-pointer"
           title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           <span className="material-symbols-outlined text-base">
@@ -55,7 +55,7 @@ export default function SideNavBar() {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-mono text-[0.62rem] font-bold tracking-[0.14em] transition-all duration-150 cursor-pointer ${
                 isActive
                   ? 'bg-[rgba(0,219,231,0.12)] border border-[rgba(0,219,231,0.4)] text-[var(--accent-fix)] shadow-[0_0_12px_rgba(0,219,231,0.25)]'
-                  : 'bg-[#070a0e] border border-[rgba(0,219,231,0.08)] text-slate-400 hover:text-slate-200 hover:border-[rgba(0,219,231,0.25)]'
+                  : 'bg-[var(--color-obsidian-layer-1)] border border-[rgba(0,219,231,0.08)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[rgba(0,219,231,0.25)]'
               }`}
             >
               <span
