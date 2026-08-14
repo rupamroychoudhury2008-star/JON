@@ -26,12 +26,9 @@ function AppShell() {
 
       {/* Main Workspace Frame */}
       <div
-        className="flex flex-col flex-1 h-full w-full min-h-0 overflow-hidden transition-all duration-300 md:ml-[72px]"
-        style={{
-          marginLeft: typeof window !== 'undefined' && window.innerWidth >= 768
-            ? (isSidebarExpanded ? '220px' : '72px')
-            : '0px',
-        }}
+        className={`flex flex-col flex-1 h-full w-full min-h-0 overflow-hidden transition-all duration-300 ml-0 ${
+          isSidebarExpanded ? 'md:ml-[220px]' : 'md:ml-[72px]'
+        }`}
       >
         {/* Top System Telemetry Bar (Row 1) */}
         <TopAppBar />

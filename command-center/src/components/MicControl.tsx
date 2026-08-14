@@ -57,7 +57,7 @@ export default function MicControl() {
         type="button"
         onClick={handleMicClick}
         disabled={isProcessing}
-        className="relative group w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 flex-shrink-0"
+        className="relative group w-11 h-11 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 flex-shrink-0"
         style={{
           background: isMicListening
             ? 'radial-gradient(circle, var(--color-cyan-subtle) 0%, rgba(15, 23, 42, 0.95) 100%)'
@@ -79,14 +79,14 @@ export default function MicControl() {
                 : 'bg-slate-700 opacity-60'
             }`}
             style={{
-              transform: `rotate(${deg}deg) translateY(-24px) sm:translateY(-28px) md:translateY(-34px)`,
+              transform: `rotate(${deg}deg) translateY(-18px) sm:translateY(-28px) md:translateY(-34px)`,
             }}
           />
         ))}
 
         {/* Inner Recessed Button */}
         <div
-          className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200"
+          className="w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-200"
           style={{
             background: isMicListening || wakeWordDetected
               ? 'radial-gradient(circle, var(--color-cyan-subtle) 0%, rgba(9, 13, 20, 0.95) 100%)'

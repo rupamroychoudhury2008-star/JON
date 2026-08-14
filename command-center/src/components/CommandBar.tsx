@@ -35,13 +35,13 @@ export default function CommandBar() {
   };
 
   return (
-    <div className="w-full flex items-center justify-between gap-2.5 sm:gap-4 md:gap-6">
+    <div className="w-full flex items-center justify-between gap-1.5 sm:gap-4 md:gap-6 max-w-full overflow-hidden">
       {/* Far Left: Circular Microphone Dial + Live Waveform */}
       <MicControl />
 
       {/* Center: Recessed Command Input Box */}
-      <div className="relative flex-1 flex flex-col justify-center recessed-input-box px-3 sm:px-4 py-2 sm:py-2.5 min-h-[52px] sm:min-h-[64px]">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+      <div className="relative flex-1 flex flex-col justify-center recessed-input-box px-2.5 sm:px-4 py-1.5 sm:py-2.5 min-h-[44px] sm:min-h-[52px] md:min-h-[64px] overflow-hidden">
+        <div className="flex items-center justify-between gap-1 sm:gap-2">
           <input
             ref={inputRef}
             type="text"
@@ -55,13 +55,13 @@ export default function CommandBar() {
                 ? "Analyzing command..."
                 : isMicListening
                 ? "Listening..."
-                : "Issue command to JON..."
+                : "Issue command..."
             }
-            className="w-full bg-transparent border-none outline-none text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] font-mono font-medium"
+            className="w-full bg-transparent border-none outline-none text-[0.75rem] sm:text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] font-mono font-medium truncate"
           />
 
           {/* Action menu icon */}
-          <button type="button" className="text-[var(--color-text-muted)] hover:text-[var(--color-cyan-fix)] transition-colors p-1 cursor-pointer">
+          <button type="button" className="hidden sm:inline-block text-[var(--color-text-muted)] hover:text-[var(--color-cyan-fix)] transition-colors p-1 cursor-pointer">
             <span className="material-symbols-outlined text-base">more_vert</span>
           </button>
         </div>
@@ -78,7 +78,7 @@ export default function CommandBar() {
         type="button"
         onClick={handleSend}
         disabled={!inputText.trim() || isProcessing}
-        className="relative bezel-button px-3.5 py-2 sm:px-6 sm:py-3.5 rounded-xl font-mono text-xs font-extrabold text-[var(--color-cyan-fix)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2.5 h-[52px] sm:h-[64px] min-w-[48px] sm:min-w-[135px] justify-center cursor-pointer group flex-shrink-0"
+        className="relative bezel-button px-2.5 py-1.5 sm:px-6 sm:py-3.5 rounded-xl font-mono text-xs font-extrabold text-[var(--color-cyan-fix)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2.5 h-[44px] sm:h-[52px] md:h-[64px] min-w-[40px] sm:min-w-[135px] justify-center cursor-pointer group flex-shrink-0"
       >
         {/* Play Icon */}
         <span className="material-symbols-outlined text-xl text-[var(--color-cyan-fix)] group-hover:scale-125 transition-transform duration-200">
