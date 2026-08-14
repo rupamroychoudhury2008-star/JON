@@ -8,7 +8,7 @@ function AppShell() {
   const { isRebooting } = useApp();
 
   return (
-    <div className="flex h-screen w-screen bg-[var(--color-obsidian-bg)] text-[var(--color-text-primary)] font-sans antialiased overflow-hidden relative">
+    <div className="flex flex-col h-screen w-screen bg-[var(--color-obsidian-bg)] text-[var(--color-text-primary)] font-sans antialiased overflow-hidden relative">
       {/* Fullscreen Core Reboot Overlay */}
       {isRebooting && (
         <div className="reboot-overlay z-50">
@@ -21,19 +21,22 @@ function AppShell() {
         </div>
       )}
 
-      {/* Left Navigation Rail (Desktop) / Slide-over Drawer (Mobile) */}
-      <SideNavBar />
+      {/* Row 1: Top System Telemetry Bar across full width */}
+      <TopAppBar />
 
-      {/* Main Workspace Frame */}
-      <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
-        {/* Top System Telemetry Bar (Row 1) */}
-        <TopAppBar />
+      {/* Row 2: Workspace Body Container (Sidebar + Main Content side by side) */}
+      <div className="flex flex-1 w-full min-h-0 overflow-hidden relative">
+        {/* Left Navigation Rail (Desktop) / Slide-over Drawer (Mobile) */}
+        <SideNavBar />
 
-        {/* Dynamic Central Subsystem View (Row 2) */}
-        <MainContent />
+        {/* Main Workspace Frame */}
+        <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
+          {/* Dynamic Central Subsystem View */}
+          <MainContent />
 
-        {/* Permanent Reserved Bottom Command Control Dock (Row 3) */}
-        <CommandDock />
+          {/* Permanent Reserved Bottom Command Control Dock */}
+          <CommandDock />
+        </div>
       </div>
     </div>
   );
