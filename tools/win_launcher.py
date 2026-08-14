@@ -126,7 +126,7 @@ def find_executable(app_name: str) -> Optional[str]:
                             return os.path.abspath(val)
                 except OSError:
                     continue
-    except ImportError:
+    except Exception:
         pass
 
     _log(f"Executable resolution failed for '{target}'")

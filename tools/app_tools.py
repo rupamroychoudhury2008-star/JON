@@ -8,14 +8,14 @@ from .win_launcher import launch_app, verify_process_and_window
 
 try:
     import pyperclip
-except ImportError:
+except Exception:
     pyperclip = None
 
 try:
     import pyautogui
     pyautogui.FAILSAFE = False
     pyautogui.PAUSE = 0.05
-except ImportError:
+except Exception:
     pyautogui = None
 
 
