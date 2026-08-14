@@ -5,7 +5,7 @@ import MainContent from './components/MainContent';
 import CommandDock from './components/CommandDock';
 
 function AppShell() {
-  const { isRebooting, isSidebarExpanded } = useApp();
+  const { isRebooting } = useApp();
 
   return (
     <div className="flex h-screen w-screen bg-[var(--color-obsidian-bg)] text-[var(--color-text-primary)] font-sans antialiased overflow-hidden relative">
@@ -25,11 +25,7 @@ function AppShell() {
       <SideNavBar />
 
       {/* Main Workspace Frame */}
-      <div
-        className={`flex flex-col flex-1 h-full w-full min-h-0 overflow-hidden transition-all duration-300 ml-0 ${
-          isSidebarExpanded ? 'md:ml-[220px]' : 'md:ml-[72px]'
-        }`}
-      >
+      <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         {/* Top System Telemetry Bar (Row 1) */}
         <TopAppBar />
 

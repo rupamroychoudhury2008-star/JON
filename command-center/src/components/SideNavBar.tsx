@@ -31,7 +31,7 @@ export default function SideNavBar() {
 
       {/* Ultra-Premium Glass Sidebar Panel */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 z-50 flex flex-col justify-between p-2.5 md:p-3 tactile-sidebar-panel transition-all duration-300 select-none border-r border-[var(--color-cyan-border)] bg-[rgba(9,13,20,0.95)] backdrop-blur-2xl shadow-[6px_0_30px_rgba(0,0,0,0.6)] ${
+        className={`fixed md:relative left-0 top-0 bottom-0 z-50 md:z-10 flex flex-col justify-between p-2.5 md:p-3 tactile-sidebar-panel transition-all duration-300 select-none border-r border-[var(--color-cyan-border)] bg-[rgba(9,13,20,0.95)] backdrop-blur-2xl shadow-[6px_0_30px_rgba(0,0,0,0.6)] h-full flex-shrink-0 ${
           isSidebarExpanded
             ? 'translate-x-0 w-[250px] max-w-[85vw] md:w-[220px]'
             : '-translate-x-full md:translate-x-0 md:w-[72px]'
