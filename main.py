@@ -4,26 +4,18 @@ from config.settings import settings
 from orchestrator import JonOrchestrator
 from io_layer.input_handler import InputHandler
 from io_layer.stt import SpeechToText
-from router.ollama_client import OllamaClient
 from router.network_detector import is_network_available
 from memory.promoter import MemoryPromoter
 
 def print_banner():
     print("=" * 60)
-    print("               JON — Local-First Hybrid AI Assistant")
+    print("               JON — 100% Cloud API Powered AI OS")
     print(f" Vault Path: {settings.vault_path}")
-    print(f" Router Model: {settings.router_model} | Offline Model: {settings.offline_model}")
+    print(" Engine: Groq 70B & Nvidia NIM Nemotron Ultra 550B")
     print("=" * 60)
 
 def handle_health():
     print("\n--- Jon System Health Check ---")
-    ollama = OllamaClient()
-    h_res = ollama.health_check()
-    print(f"Ollama Status: {h_res.get('status')}")
-    print(f"Available Models: {h_res.get('available_models', [])}")
-    print(f"Router Model ({settings.router_model}): {'OK' if h_res.get('router_model_available') else 'MISSING'}")
-    print(f"Offline Model ({settings.offline_model}): {'OK' if h_res.get('offline_model_available') else 'MISSING'}")
-    
     net_online = is_network_available()
     print(f"Network Connection: {'ONLINE' if net_online else 'OFFLINE'}")
 

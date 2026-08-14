@@ -3,9 +3,6 @@ import time
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from config.settings import settings
-from .network_detector import is_network_available
-from .ollama_client import OllamaClient
-
 class UserRequest(BaseModel):
     text: str
     timestamp: float = Field(default_factory=time.time)
@@ -19,96 +16,26 @@ class IntentDecision(BaseModel):
     reasoning: str = ""
     target_model: str = ""
 
-SYSTEM_ROUTER_PROMPT = """You are the Intent Router for Jon, an AI assistant.
-Your ONLY job is to classify user requests into one of three specific intents:
-
-1. "chat/research/planning": General conversation, Q&A, research synthesis, brainstorming, advice, summarization, explanations, opinions, recommendations.
-2. "coding": Code generation, code review, debugging, writing scripts, software design questions, programming language questions, API usage, algorithms.
-3. "device_automation": Controlling the computer, opening/closing applications, reading/writing local files, browser automation, terminal commands, running shell scripts, system operations, screenshots.
-
-You MUST respond strictly with a single valid JSON object in this exact format:
-{
-  "intent": "chat/research/planning" | "coding" | "device_automation",
-  "reasoning": "short explanation"
-}
-
-Do NOT attempt to answer the user's request. Only output the classification JSON.
-"""
-
 class IntentRouter:
-    def __init__(self, ollama_client: Optional[OllamaClient] = None):
-        self.ollama = ollama_client or OllamaClient()
+    def __init__(self):
+        pass
 
     def route(self, request: UserRequest, force_offline: bool = False) -> IntentDecision:
         """
-        Classifies request and determines routing.
-        If network is offline or force_offline is True, returns offline decision.
-        Otherwise uses Ollama 3B to classify the intent.
+        Classifies request and routes 100% to high-performance Cloud API models (Groq / Nvidia NIM).
         """
-        online_status = False if force_offline else is_network_available()
+        # Determine intent using fast rule-based classification
+        intent = self._rule_based_classification(request.text)
+        confidence = self._rule_confidence(request.text, intent)
+        target_model = self._map_intent_to_model(intent)
 
-        if not online_status:
-            return IntentDecision(
-                is_online=False,
-                intent="offline_fallback",
-                confidence=1.0,
-                reasoning="Network unreachable or offline mode enforced.",
-                target_model=settings.offline_model
-            )
-
-        # Try rule-based first for obvious patterns (fast path)
-        rule_intent = self._rule_based_classification(request.text)
-        rule_confidence = self._rule_confidence(request.text, rule_intent)
-
-        # If rule-based is very confident, skip LLM call (saves latency)
-        if rule_confidence >= 0.95:
-            return IntentDecision(
-                is_online=True,
-                intent=rule_intent,
-                confidence=rule_confidence,
-                reasoning=f"High-confidence rule-based classification",
-                target_model=self._map_intent_to_model(rule_intent)
-            )
-
-        # Call Ollama 3B to classify online intent
-        prompt = f"User Request: {request.text}"
-        try:
-            raw_response = self.ollama.generate(
-                model=settings.router_model,
-                prompt=prompt,
-                system=SYSTEM_ROUTER_PROMPT,
-                json_mode=True,
-                temperature=0.1
-            )
-            
-            parsed = json.loads(raw_response)
-            intent = parsed.get("intent", "chat/research/planning")
-            reasoning = parsed.get("reasoning", "")
-
-            valid_intents = ["chat/research/planning", "coding", "device_automation"]
-            if intent not in valid_intents:
-                # Use rule-based fallback
-                intent = rule_intent
-
-            target_model = self._map_intent_to_model(intent)
-
-            return IntentDecision(
-                is_online=True,
-                intent=intent,
-                confidence=0.9,
-                reasoning=reasoning,
-                target_model=target_model
-            )
-
-        except Exception as e:
-            # Fallback to rule-based classification if router call fails
-            return IntentDecision(
-                is_online=True,
-                intent=rule_intent,
-                confidence=rule_confidence,
-                reasoning=f"Ollama router fallback ({str(e)})",
-                target_model=self._map_intent_to_model(rule_intent)
-            )
+        return IntentDecision(
+            is_online=True,
+            intent=intent,
+            confidence=confidence,
+            reasoning=f"Routed directly to Cloud API model ({target_model})",
+            target_model=target_model
+        )
 
     def _map_intent_to_model(self, intent: str) -> str:
         if intent == "coding":
@@ -122,18 +49,7 @@ class IntentRouter:
         import re
         lower_text = text.lower()
 
-        # Device automation keywords
-        automation_keywords = [
-            r"\bopen\b", r"\bclose\b", r"\blaunch\b", r"\bstart\b", r"\bstop\b", r"\bkill\b",
-            r"\bbrowser\b", r"\bclick\b", r"\bterminal\b", r"\bcmd\b", r"\bpowershell\b",
-            r"\brun command\b", r"\bexecute\b", r"\bfile explorer\b",
-            r"\bnotepad\b", r"\bcalculator\b", r"\bscreenshot\b", r"\bfolder\b",
-            r"\bsearch in browser\b", r"\bgoogle search\b", r"\bwrite\b", r"\btype\b", r"\btypewrite\b"
-        ]
-        if any(re.search(p, lower_text) for p in automation_keywords):
-            return "device_automation"
-
-        # Coding keywords
+        # Coding keywords (check coding first so 'write a python script' maps to coding, not device_automation)
         coding_keywords = [
             r"\bcode\b", r"\bfunction\b", r"\bbug\b", r"\bpython\b", r"\bscript\b", r"\brefactor\b",
             r"\bjavascript\b", r"\bjava\b", r"\bclass\b", r"\bdef\b", r"\bimport\b",
@@ -144,6 +60,18 @@ class IntentRouter:
         ]
         if any(re.search(p, lower_text) for p in coding_keywords):
             return "coding"
+
+        # Device automation keywords
+        automation_keywords = [
+            r"\bopen\b", r"\bclose\b", r"\blaunch\b", r"\bstart\b", r"\bstop\b", r"\bkill\b",
+            r"\bbrowser\b", r"\bclick\b", r"\bterminal\b", r"\bcmd\b", r"\bpowershell\b",
+            r"\brun command\b", r"\bexecute\b", r"\bfile explorer\b",
+            r"\bnotepad\b", r"\bcalculator\b", r"\bscreenshot\b", r"\bfolder\b",
+            r"\bsearch in browser\b", r"\bgoogle search\b", r"\bwrite note\b", r"\bwrite file\b", r"\btypewrite\b",
+            r"\bcall\b", r"\bdial\b", r"\bphone call\b", r"\bmake call\b", r"\bemail\b", r"\bgmail\b", r"\bsend email\b", r"\bcompose email\b"
+        ]
+        if any(re.search(p, lower_text) for p in automation_keywords):
+            return "device_automation"
 
         return "chat/research/planning"
 

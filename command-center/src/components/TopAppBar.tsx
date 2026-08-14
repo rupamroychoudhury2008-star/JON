@@ -4,14 +4,13 @@ import { useDeviceStatus } from '../hooks/useDeviceStatus';
 const TOP_TABS: { id: ViewId; label: string }[] = [
   { id: 'voice', label: 'JON CORE' },
   { id: 'session', label: 'SESSION' },
-  { id: 'tools', label: 'TOOLS' },
-  { id: 'memory', label: 'MEMORY' },
-  { id: 'metrics', label: 'METRICS' },
-  { id: 'logs', label: 'LOGS' },
+  { id: 'appearance', label: 'AUTOMATION' },
+  { id: 'connectivity', label: 'NETWORK' },
+  { id: 'settings', label: 'SETTINGS' },
 ];
 
 export default function TopAppBar() {
-  const { activeView, setActiveView, colorMode, toggleColorMode, user, logout } = useApp();
+  const { activeView, setActiveView, colorMode, toggleColorMode, user, logout, isSidebarExpanded, setIsSidebarExpanded } = useApp();
   const {
     batteryIcon,
     batteryColor,
@@ -22,48 +21,57 @@ export default function TopAppBar() {
   } = useDeviceStatus();
 
   return (
-    <header className="flex items-center justify-between px-4 md:px-6 h-14 border-b border-[rgba(0,219,231,0.2)] bg-[var(--color-obsidian-bg)] flex-shrink-0 z-20">
-      {/* Far Left: Hexagonal Cyan Emblem + Circular J Badge + Brand Text */}
-      <div className="flex items-center gap-3">
-        {/* Hexagonal Cyan Emblem Box */}
-        <div className="w-8 h-8 rounded-lg bg-[var(--color-obsidian-layer-1)] border border-[rgba(0,219,231,0.3)] flex items-center justify-center text-[var(--accent-fix)] shadow-[0_0_10px_rgba(0,219,231,0.3)]">
+    <header className="flex items-center justify-between px-3 md:px-6 h-14 border-b border-[var(--color-cyan-border)] bg-[rgba(9,13,20,0.85)] backdrop-blur-md flex-shrink-0 z-30 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      {/* Far Left: Mobile Hamburger Toggle + Hexagonal Emblem + Brand Text */}
+      <div className="flex items-center gap-2.5">
+        {/* Mobile Hamburger Drawer Trigger */}
+        <button
+          onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          className="md:hidden flex items-center justify-center p-1.5 rounded-lg bg-[rgba(15,23,42,0.6)] border border-[var(--color-cyan-border)] text-[var(--color-cyan-fix)] hover:bg-[var(--color-cyan-subtle)] transition-all cursor-pointer"
+          title="Toggle Navigation Menu"
+        >
+          <span className="material-symbols-outlined text-lg">
+            {isSidebarExpanded ? 'menu_open' : 'menu'}
+          </span>
+        </button>
+
+        {/* Hexagonal Emblem Box */}
+        <div className="w-8 h-8 rounded-lg bg-[var(--color-cyan-subtle)] border border-[var(--color-cyan-border-bright)] flex items-center justify-center text-[var(--color-cyan-fix)] shadow-[0_0_12px_var(--color-cyan-glow)] transition-transform hover:scale-105 flex-shrink-0">
           <span className="material-symbols-outlined text-lg">hexagon</span>
         </div>
 
-        {/* Circular J Badge */}
-        <div className="w-6 h-6 rounded-full bg-[var(--color-obsidian-layer-2)] border border-[rgba(0,219,231,0.4)] flex items-center justify-center font-mono font-extrabold text-xs text-[var(--accent-fix)]">
-          J
-        </div>
-
-        {/* Text Titles */}
+        {/* Brand Titles */}
         <div className="flex flex-col">
-          <h1 className="text-xs font-extrabold tracking-[0.18em] uppercase font-mono text-[var(--accent-fix)] text-shadow-[0_0_10px_rgba(0,219,231,0.5)]">
+          <h1 className="text-[0.65rem] sm:text-xs font-extrabold tracking-[0.16em] sm:tracking-[0.2em] uppercase font-mono text-[var(--color-cyan-fix)] text-shadow-[0_0_10px_var(--color-cyan-glow)] truncate">
             JON COMMAND CENTER
           </h1>
-          <span className="tech-label text-[0.48rem] text-slate-500">OBSIDIAN AI OS</span>
+          <span className="tech-label text-[0.45rem] sm:text-[0.48rem] text-[var(--color-text-muted)] tracking-[0.14em]">JON AI OS // SYSTEM v2.4</span>
         </div>
       </div>
 
-      {/* Center: Navigation Tabs (Matching Reference Image) */}
+      {/* Center: Desktop Navigation Tabs (Hidden on small mobile, accessible via drawer/top scroll) */}
       <nav className="hidden md:flex items-center gap-6">
         {TOP_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveView(tab.id)}
-            className="relative px-1 py-1 text-[0.68rem] font-bold tracking-[0.14em] transition-colors duration-150 cursor-pointer font-mono"
+            className="relative px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] transition-all duration-200 cursor-pointer font-mono hover:text-[var(--color-cyan-fix)]"
             style={{
               color: activeView === tab.id
-                ? 'var(--accent-fix)'
+                ? 'var(--color-cyan-fix)'
                 : 'var(--color-text-muted)',
+              textShadow: activeView === tab.id
+                ? '0 0 10px var(--color-cyan-glow)'
+                : 'none',
             }}
           >
             {tab.label}
             {activeView === tab.id && (
               <span
-                className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full"
+                className="absolute -bottom-1 left-0 right-0 h-[2px] rounded-full transition-all"
                 style={{
-                  background: 'var(--accent-fix)',
-                  boxShadow: '0 0 8px var(--color-cyan-glow)',
+                  background: 'var(--color-cyan-fix)',
+                  boxShadow: '0 0 10px var(--color-cyan-glow), 0 0 4px var(--color-cyan-fix)',
                 }}
               />
             )}
@@ -71,19 +79,19 @@ export default function TopAppBar() {
         ))}
       </nav>
 
-      {/* Far Right: Signal, Wi-Fi, Battery 96%, Sun Icon, VOICE LISTENING Status Pill */}
-      <div className="flex items-center gap-3 md:gap-4 font-mono">
-        <div className="hidden lg:flex items-center gap-3 text-xs">
-          <span className="material-symbols-outlined text-base" style={{ color: signalColor }}>
+      {/* Far Right: Telemetry Controls & Voice Status */}
+      <div className="flex items-center gap-2 sm:gap-3 md:gap-4 font-mono">
+        <div className="hidden lg:flex items-center gap-3 text-xs bg-[rgba(15,23,42,0.6)] px-3 py-1 rounded-full border border-[rgba(255,255,255,0.06)]">
+          <span className="material-symbols-outlined text-base transition-colors" style={{ color: signalColor }} title="Cellular Signal">
             {signalIcon}
           </span>
 
-          <span className="material-symbols-outlined text-base" style={{ color: wifiColor }}>
+          <span className="material-symbols-outlined text-base transition-colors" style={{ color: wifiColor }} title="Wi-Fi Signal">
             {wifiIcon}
           </span>
 
           <div className="flex items-center gap-1">
-            <span className="material-symbols-outlined text-base" style={{ color: batteryColor }}>
+            <span className="material-symbols-outlined text-base transition-colors" style={{ color: batteryColor }} title="Battery Level">
               {batteryIcon}
             </span>
             <span className="text-[0.62rem] font-bold" style={{ color: batteryColor }}>
@@ -92,10 +100,10 @@ export default function TopAppBar() {
           </div>
         </div>
 
-        {/* Sun/Theme Toggle Icon */}
+        {/* Theme Toggle Icon */}
         <button
           onClick={toggleColorMode}
-          className="text-[var(--color-text-muted)] hover:text-[var(--accent-fix)] transition-colors p-1 cursor-pointer"
+          className="text-[var(--color-text-muted)] hover:text-[var(--color-cyan-fix)] hover:bg-[var(--color-cyan-subtle)] transition-all p-1.5 rounded-lg border border-transparent hover:border-[var(--color-cyan-border)] cursor-pointer"
           title={colorMode === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
         >
           <span className="material-symbols-outlined text-base">
@@ -110,7 +118,7 @@ export default function TopAppBar() {
               <span className="text-[0.62rem] font-bold text-[var(--color-text-primary)] font-mono truncate max-w-[100px]">
                 {user.username}
               </span>
-              <span className="text-[0.5rem] text-[var(--accent-fix)] font-mono font-semibold">
+              <span className="text-[0.5rem] text-[var(--color-cyan-fix)] font-mono font-semibold">
                 {user.clearanceLevel}
               </span>
             </div>
@@ -124,10 +132,11 @@ export default function TopAppBar() {
           </div>
         )}
 
-        {/* VOICE LISTENING Status Pill (Matching Screenshot) */}
-        <div className="status-pill-cyan">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-cyan-fix)] shadow-[0_0_6px_var(--color-cyan-glow)] animate-pulse" />
-          <span>VOICE LISTENING</span>
+        {/* VOICE LISTENING Status Pill (Responsive padding) */}
+        <div className="status-pill-cyan px-2.5 py-1 sm:px-3 text-[0.55rem] sm:text-[0.6rem]">
+          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[var(--color-cyan-fix)] shadow-[0_0_8px_var(--color-cyan-glow)] animate-pulse" />
+          <span className="hidden xs:inline">VOICE LISTENING</span>
+          <span className="xs:hidden">ACTIVE</span>
         </div>
       </div>
     </header>

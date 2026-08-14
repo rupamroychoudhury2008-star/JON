@@ -21,16 +21,16 @@ class Settings:
         sys_cfg = self.config_data.get("system", {})
         self.assistant_name: str = sys_cfg.get("name", "Jon")
         self.wake_words: List[str] = sys_cfg.get("wake_words", ["jon", "hey jon"])
-        vault_str = os.getenv("OBSIDIAN_VAULT_PATH", sys_cfg.get("vault_path", "d:/JON/vault"))
-        self.vault_path: Path = Path(vault_str).resolve()
+        vault_str = os.getenv("OBSIDIAN_VAULT_PATH", sys_cfg.get("vault_path", "vault"))
+        target_path = Path(vault_str)
+        if not target_path.is_absolute() and not target_path.exists():
+            root_dir = Path(__file__).resolve().parent.parent
+            target_path = root_dir / vault_str
+        if not target_path.exists() and os.getenv("OBSIDIAN_VAULT_PATH") is None:
+            root_dir = Path(__file__).resolve().parent.parent
+            target_path = root_dir / "vault"
+        self.vault_path: Path = target_path.resolve()
         self.require_tool_confirmation: bool = os.getenv("REQUIRE_TOOL_CONFIRMATION", str(sys_cfg.get("require_confirmation", True))).lower() == "true"
-
-        # Ollama
-        ollama_cfg = self.config_data.get("ollama", {})
-        self.ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", ollama_cfg.get("base_url", "http://127.0.0.1:11434"))
-        self.router_model: str = os.getenv("ROUTER_MODEL", ollama_cfg.get("router_model", "llama3.2:3b"))
-        self.offline_model: str = os.getenv("OFFLINE_MODEL", ollama_cfg.get("offline_model", "llama3.1:8b"))
-        self.ollama_timeout: int = ollama_cfg.get("timeout_seconds", 60)
 
         # Network
         net_cfg = self.config_data.get("network", {})

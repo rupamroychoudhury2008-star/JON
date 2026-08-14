@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.example
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+command-center/node_modules/
+command-center/dist/
+scratch/
+tool_launch.log
+*.md

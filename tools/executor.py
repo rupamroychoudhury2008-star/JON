@@ -5,6 +5,7 @@ from .app_tools import open_app, close_app, type_text
 from .file_tools import read_file, write_file
 from .browser_tools import open_browser, browser_action
 from .terminal_tools import open_terminal, run_command, close_terminal
+from .communication_tools import make_phone_call, compose_gmail
 from .guardrails import GuardrailChecker
 
 TOOLS_SCHEMA = [
@@ -129,6 +130,37 @@ TOOLS_SCHEMA = [
             "description": "Closes active terminal process",
             "parameters": {"type": "object", "properties": {}}
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "make_phone_call",
+            "description": "Places or dials a phone call to a recipient phone number or contact via Windows Phone Link / Dialer",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "phone_number": {"type": "string", "description": "Destination phone number to dial e.g. +1234567890"},
+                    "contact_name": {"type": "string", "description": "Optional contact name e.g. John Doe"}
+                },
+                "required": ["phone_number"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compose_gmail",
+            "description": "Composes and opens an email directly in Gmail browser window with recipient, subject, and body pre-filled",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Recipient email address e.g. user@example.com"},
+                    "subject": {"type": "string", "description": "Email subject line"},
+                    "body": {"type": "string", "description": "Email body content"}
+                },
+                "required": ["to"]
+            }
+        }
     }
 ]
 
@@ -184,6 +216,10 @@ class ToolExecutor:
                 res = run_command(cmd=args.get("cmd", ""))
             elif tool_name == "close_terminal":
                 res = close_terminal()
+            elif tool_name == "make_phone_call" or tool_name == "place_call":
+                res = make_phone_call(phone_number=args.get("phone_number", ""), contact_name=args.get("contact_name"))
+            elif tool_name == "compose_gmail" or tool_name == "send_email_gmail":
+                res = compose_gmail(to=args.get("to", ""), subject=args.get("subject", ""), body=args.get("body", ""))
             else:
                 res = ToolResult(success=False, tool_name=tool_name, action="unknown", message=f"Unknown tool '{tool_name}'", error=f"Tool '{tool_name}' is not registered.")
         except Exception as e:

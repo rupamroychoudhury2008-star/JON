@@ -1,3 +1,4 @@
+import os
 import time
 import subprocess
 import psutil
@@ -96,37 +97,45 @@ def close_app(name: str) -> ToolResult:
         target_raw = name.lower().strip()
 
         aliases = {
-            "calculator": ["calc", "calculatorapp"],
-            "calc": ["calc", "calculatorapp"],
-            "chrome": ["chrome"],
-            "browser": ["chrome", "msedge", "firefox", "brave"],
-            "edge": ["msedge", "edge"],
-            "notepad": ["notepad"],
-            "paint": ["mspaint", "paint"],
-            "cmd": ["cmd"],
-            "terminal": ["cmd", "wt", "powershell"],
-            "word": ["winword", "word"],
-            "excel": ["excel"],
-            "powerpoint": ["powerpnt", "ppt"],
-            "spotify": ["spotify"],
-            "discord": ["discord"]
+            "calculator": ["calc.exe", "calculatorapp.exe", "calculator.exe", "windowscalculator.exe", "calc", "calculatorapp"],
+            "calc": ["calc.exe", "calculatorapp.exe", "calculator.exe", "windowscalculator.exe", "calc", "calculatorapp"],
+            "chrome": ["chrome.exe", "chrome"],
+            "browser": ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe"],
+            "edge": ["msedge.exe", "edge.exe", "msedge"],
+            "notepad": ["notepad.exe", "notepad"],
+            "paint": ["mspaint.exe", "paint.exe", "mspaint"],
+            "cmd": ["cmd.exe", "cmd"],
+            "terminal": ["cmd.exe", "wt.exe", "powershell.exe"],
+            "word": ["winword.exe", "word"],
+            "excel": ["excel.exe"],
+            "powerpoint": ["powerpnt.exe"],
+            "spotify": ["spotify.exe"],
+            "discord": ["discord.exe"],
+            "whatsapp": ["whatsapp.exe", "whatsappdesktop.exe", "whatsapp"]
         }
 
-        targets = aliases.get(target_raw, [target_raw])
-        if target_raw not in targets:
-            targets.append(target_raw)
-
-        target_exes = [t if t.endswith(".exe") else f"{t}.exe" for t in targets]
+        targets = aliases.get(target_raw, [target_raw, f"{target_raw}.exe"])
 
         killed = 0
         for proc in psutil.process_iter(['pid', 'name']):
             try:
-                pname = proc.info['name'].lower()
-                if any(t == pname or t in pname for t in targets + target_exes):
+                pname = (proc.info.get('name') or '').lower()
+                if pname and any(t.lower() == pname or t.lower() in pname for t in targets):
                     proc.kill()
                     killed += 1
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
                 continue
+
+        if os.name == 'nt':
+            for exe_name in set(targets):
+                if not exe_name.endswith(".exe"):
+                    exe_name = f"{exe_name}.exe"
+                try:
+                    tk_res = subprocess.run(["taskkill", "/F", "/T", "/IM", exe_name], capture_output=True, text=True)
+                    if tk_res.returncode == 0:
+                        killed += 1
+                except Exception:
+                    pass
 
         if killed > 0:
             return ToolResult(
@@ -139,12 +148,12 @@ def close_app(name: str) -> ToolResult:
             )
 
         return ToolResult(
-            success=False,
+            success=True,
             tool_name="close_app",
             action="close",
             target=name,
-            message=f"Failed to close '{name}'.",
-            error=f"No running processes found matching '{name}'."
+            message=f"Application '{name}' is not running (already closed).",
+            data={"killed_count": 0}
         )
     except Exception as e:
         return ToolResult(

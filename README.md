@@ -373,17 +373,11 @@ JON uses a multi-model architecture rather than forcing every task through one m
 
 Local model direction
 
-The architecture has included:
+The architecture is 100% powered by Cloud API Models:
 
-Llama-family local models
-
-Nemotron-family local models
-
-Ollama-compatible models
-
-Cloud model direction
-
-Cloud inference can be used when required, including a previously planned Groq/Llama path.
+- Groq API (Llama 3.3 70B Versatile) for Chat, Research, and Synthesis
+- Nvidia NIM API (Llama 3.3 70B Instruct) for Advanced Coding
+- Nvidia NIM API (Nemotron Ultra 550B) for Control & Device Automation
 
 Future JON models
 
@@ -831,15 +825,9 @@ Wake-word processing
 
 AI
 
-Ollama-compatible local models
+Groq API (Llama 3.3 70B Versatile)
 
-Llama-family models
-
-Nemotron-family models
-
-Groq-hosted models
-
-Future JON-specific models
+Nvidia NIM API (Llama 3.3 70B Instruct & Nemotron Ultra 550B)
 
 Memory
 
@@ -1125,8 +1113,7 @@ Model Requests Failing
 
 Check:
 
-Local model service
-Ollama status
+Cloud API key status
 API keys
 Network
 Model name

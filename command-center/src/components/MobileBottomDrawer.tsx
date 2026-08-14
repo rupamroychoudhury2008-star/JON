@@ -5,7 +5,7 @@ const MOBILE_TABS: { id: ViewId; icon: string; label: string }[] = [
   { id: 'appearance', icon: 'palette', label: 'Theme' },
   { id: 'connectivity', icon: 'network_check', label: 'Uplink' },
   { id: 'voice', icon: 'record_voice_over', label: 'Voice' },
-  { id: 'diagnostics', icon: 'terminal', label: 'Diag' },
+  { id: 'session', icon: 'terminal', label: 'Session' },
   { id: 'settings', icon: 'settings', label: 'Settings' },
 ];
 

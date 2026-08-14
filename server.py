@@ -9,7 +9,6 @@ from socketserver import ThreadingMixIn
 from config.settings import settings
 from orchestrator import JonOrchestrator
 from io_layer.input_handler import InputHandler
-from router.ollama_client import OllamaClient
 from router.network_detector import is_network_available
 from memory.promoter import MemoryPromoter
 from memory.obsidian_vault import ObsidianVault
@@ -31,31 +30,31 @@ INDEX_HTML = """<!DOCTYPE html>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
         
         :root, [data-color-mode="dark"], [data-theme="dark"] {
-            --bg-body: #070a12;
-            --bg-radial-1: rgba(14, 165, 233, 0.18);
-            --bg-radial-2: rgba(139, 92, 246, 0.18);
-            --bg-radial-3: rgba(56, 189, 248, 0.08);
-            --glass-bg: rgba(15, 23, 42, 0.55);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --glass-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 0 40px rgba(14, 165, 233, 0.12);
-            --header-bg: rgba(30, 41, 59, 0.35);
-            --header-border: rgba(255, 255, 255, 0.08);
-            --title-color-1: #ffffff;
-            --title-color-2: #38bdf8;
-            --text-color: #f8fafc;
-            --jon-msg-bg: rgba(30, 41, 59, 0.55);
-            --jon-msg-border: rgba(255, 255, 255, 0.1);
-            --jon-msg-text: #f8fafc;
-            --code-bg: rgba(2, 6, 23, 0.7);
-            --code-text: #38bdf8;
-            --input-bar-bg: rgba(15, 23, 42, 0.45);
-            --input-field-bg: rgba(30, 41, 59, 0.5);
+            --bg-body: #212121;
+            --bg-radial-1: rgba(16, 163, 127, 0.12);
+            --bg-radial-2: rgba(16, 163, 127, 0.08);
+            --bg-radial-3: rgba(16, 163, 127, 0.04);
+            --glass-bg: #171717;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            --header-bg: #171717;
+            --header-border: rgba(255, 255, 255, 0.1);
+            --title-color-1: #ececec;
+            --title-color-2: #10a37f;
+            --text-color: #ececec;
+            --jon-msg-bg: #2f2f2f;
+            --jon-msg-border: rgba(255, 255, 255, 0.12);
+            --jon-msg-text: #ececec;
+            --code-bg: #171717;
+            --code-text: #10a37f;
+            --input-bar-bg: #2f2f2f;
+            --input-field-bg: #2f2f2f;
             --input-field-border: rgba(255, 255, 255, 0.12);
-            --input-field-text: #f8fafc;
-            --input-placeholder: #64748b;
-            --btn-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+            --input-field-text: #ececec;
+            --input-placeholder: #8e8e8e;
+            --btn-bg: #2f2f2f;
             --btn-border: rgba(255, 255, 255, 0.15);
-            --btn-text: #f8fafc;
+            --btn-text: #ececec;
             --scrollbar-thumb: rgba(255, 255, 255, 0.15);
         }
 
@@ -618,8 +617,6 @@ class JonHTTPRequestHandler(BaseHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(parsed_path.query)
 
         if path in ["/health", "/api/health"]:
-            ollama = OllamaClient()
-            h_res = ollama.health_check()
             net_online = is_network_available()
 
             from cloud_gateway.groq_adapter import GroqAdapter
@@ -634,7 +631,7 @@ class JonHTTPRequestHandler(BaseHTTPRequestHandler):
                 "status": "healthy",
                 "system": settings.assistant_name,
                 "network_online": net_online,
-                "ollama": h_res,
+                "mode": "100% Cloud API Powered",
                 "keys_configured": {
                     "groq": bool(settings.groq_api_key),
                     "nvidia_coding": bool(settings.nvidia_coding_api_key),
@@ -752,7 +749,11 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-def run_server(port: int = 8000):
+def run_server(port: int = None):
+    if port is None:
+        port_env = os.environ.get("PORT")
+        port = int(port_env) if port_env and port_env.isdigit() else int(getattr(settings, "server_port", 8000))
+
     server_address = ("0.0.0.0", port)
     try:
         httpd = ThreadedHTTPServer(server_address, JonHTTPRequestHandler)

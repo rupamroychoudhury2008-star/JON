@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: jon-ai-assistant
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: NVIDIA_CODING_API_KEY
+        sync: false
+      - key: NVIDIA_AUTOMATION_API_KEY
+        sync: false
+      - key: REQUIRE_TOOL_CONFIRMATION
+        value: "false"

@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from .obsidian_vault import ObsidianVault
 from .memory_manager import MemoryManager
-from router.ollama_client import OllamaClient
+from cloud_gateway.gateway import CloudGateway
+from router.intent_router import UserRequest
 from config.settings import settings
 
 PROMOTION_SYSTEM_PROMPT = """You are the Memory Consolidation Engine for Jon.
@@ -20,10 +21,10 @@ If no durable facts are found, return "NO_DURABLE_FACTS".
 """
 
 class MemoryPromoter:
-    def __init__(self, memory_manager: Optional[MemoryManager] = None, ollama_client: Optional[OllamaClient] = None):
+    def __init__(self, memory_manager: Optional[MemoryManager] = None, gateway: Optional[CloudGateway] = None):
         self.memory_manager = memory_manager or MemoryManager()
         self.vault = self.memory_manager.vault
-        self.ollama = ollama_client or OllamaClient()
+        self.gateway = gateway or CloudGateway()
 
     def run_promotion(self) -> Dict[str, Any]:
         """
@@ -40,12 +41,9 @@ class MemoryPromoter:
                     content = f.read()
 
                 prompt = f"Analyze these short-term interaction notes and extract durable facts:\n\n{content}"
-                summary = self.ollama.generate(
-                    model=settings.offline_model,
-                    prompt=prompt,
-                    system=PROMOTION_SYSTEM_PROMPT,
-                    temperature=0.2
-                )
+                req = UserRequest(text=prompt)
+                res = self.gateway.route_to_cloud(intent="chat/research/planning", request=req, context=PROMOTION_SYSTEM_PROMPT)
+                summary = res.get("content", "")
 
                 if "NO_DURABLE_FACTS" not in summary and len(summary) > 20:
                     note_title = f"summary_{file.stem}"

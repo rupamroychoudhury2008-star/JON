@@ -40,30 +40,24 @@ export default function ConnectivityView() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-6 gap-6 overflow-y-auto animate-[fade-in_0.3s_ease-out]">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="flex flex-col h-full p-4 md:p-6 gap-6 overflow-y-auto animate-fadeIn">
+      <div className="flex items-center justify-between flex-wrap gap-3 border-b border-[rgba(0,219,231,0.15)] pb-4">
         <div>
           <h2
-            className="text-lg font-bold tracking-[0.08em]"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-fix, var(--color-cyan-fix))', textShadow: '0 0 8px var(--accent-glow, rgba(0,219,231,0.4))' }}
+            className="text-lg font-extrabold tracking-[0.1em] text-[var(--color-cyan-fix)] text-shadow-[0_0_10px_var(--color-cyan-glow)] font-mono"
           >
-            CONNECTIVITY & UPLINK
+            CONNECTIVITY & TELEMETRY NETWORK
           </h2>
-          <p className="tech-label mt-1">TELEMETRY NETWORK & HARDWARE STATUS</p>
+          <p className="tech-label mt-1 text-[var(--color-text-muted)]">SYSTEM HARDWARE INTERFACE & SATELLITE SUBSYSTEM STATUS</p>
         </div>
         <button
           onClick={runLatencyTest}
           disabled={isTesting}
-          className="extruded-btn px-5 py-2.5 rounded-lg text-xs font-bold tracking-[0.12em] flex items-center gap-2 cursor-pointer disabled:opacity-50"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--accent-color, var(--color-cyan-dim))',
-            borderColor: 'var(--color-cyan-border, rgba(0,219,231,0.25))',
-          }}
+          className="extruded-btn px-5 py-2.5 rounded-xl text-xs font-mono font-bold tracking-[0.12em] flex items-center gap-2 cursor-pointer disabled:opacity-50 text-[var(--color-cyan-fix)] border-[rgba(0,219,231,0.35)] bg-[rgba(0,219,231,0.1)] hover:bg-[rgba(0,219,231,0.18)] transition-all shadow-[0_0_12px_rgba(0,219,231,0.2)]"
         >
           {isTesting ? (
             <>
-              <span className="material-symbols-outlined text-base animate-[spin_1s_linear_infinite]">sync</span>
+              <span className="material-symbols-outlined text-base animate-spin">sync</span>
               TESTING LATENCY...
             </>
           ) : (
@@ -76,85 +70,87 @@ export default function ConnectivityView() {
       </div>
 
       {testLog && (
-        <div className="recessed-tray rounded-lg p-3.5 animate-[slide-up_0.3s_var(--ease-out-expo)]" style={{ background: 'rgba(0,219,231,0.06)' }}>
-          <p className="text-xs font-mono" style={{ color: 'var(--accent-fix, var(--color-cyan-fix))' }}>
-            ✓ {testLog}
+        <div className="recessed-tray rounded-2xl p-4 animate-slideUp border border-[rgba(0,219,231,0.3)] bg-[rgba(0,219,231,0.08)] backdrop-blur-md">
+          <p className="text-xs font-mono text-[var(--color-cyan-fix)] font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">check_circle</span>
+            {testLog}
           </p>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="recessed-tray rounded-lg p-4">
+        <div className="recessed-tray rounded-2xl p-5 border border-[rgba(0,219,231,0.18)] bg-[rgba(15,23,42,0.6)] backdrop-blur-md">
           <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-lg" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>router</span>
-            <span className="tech-label" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>PRIMARY GATEWAY</span>
+            <span className="material-symbols-outlined text-lg text-[var(--color-cyan-fix)]">router</span>
+            <span className="tech-label text-[var(--color-cyan-fix)]">PRIMARY GATEWAY</span>
           </div>
           <p
-            className="text-xl font-bold mb-1"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-fix, var(--color-cyan-fix))', textShadow: '0 0 6px var(--accent-glow, rgba(0,219,231,0.4))' }}
+            className="text-xl font-extrabold font-mono mb-1 text-[var(--color-cyan-fix)] text-shadow-[0_0_8px_var(--color-cyan-glow)]"
           >
             {gatewayIp}
           </p>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-tech-border)]">
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--color-tech-border)]">
             <span className="tech-label">LATENCY PING:</span>
-            <span className="text-xs font-mono font-bold text-[#00e676]">{pingLatency} ms</span>
+            <span className="text-xs font-mono font-bold text-[#10b981]">{pingLatency} ms</span>
           </div>
         </div>
 
-        <div className="recessed-tray rounded-lg p-4">
+        <div className="recessed-tray rounded-2xl p-5 border border-[rgba(0,219,231,0.18)] bg-[rgba(15,23,42,0.6)] backdrop-blur-md">
           <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-lg" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>cell_tower</span>
-            <span className="tech-label" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>SATELLITE UPLINK</span>
+            <span className="material-symbols-outlined text-lg text-[var(--color-cyan-fix)]">cell_tower</span>
+            <span className="tech-label text-[var(--color-cyan-fix)]">SATELLITE UPLINK</span>
           </div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
-            <p className="text-sm font-bold tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: '#00e676' }}>
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981] animate-pulse" />
+            <p className="text-sm font-extrabold tracking-wider font-mono text-[#10b981]">
               ACTIVE / STABLE
             </p>
           </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-tech-border)]">
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--color-tech-border)]">
             <span className="tech-label">FREQ: {uplinkFreq}</span>
-            <span className="text-xs font-mono font-bold text-[var(--accent-fix)]">SNR: {uplinkSnr} dB</span>
+            <span className="text-xs font-mono font-bold text-[var(--color-cyan-fix)]">SNR: {uplinkSnr} dB</span>
           </div>
         </div>
 
-        <div className="recessed-tray rounded-lg p-4">
+        <div className="recessed-tray rounded-2xl p-5 border border-[rgba(0,219,231,0.18)] bg-[rgba(15,23,42,0.6)] backdrop-blur-md">
           <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-lg" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>shield_lock</span>
-            <span className="tech-label" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>SECURITY ENCRYPTION</span>
+            <span className="material-symbols-outlined text-lg text-[var(--color-cyan-fix)]">shield_lock</span>
+            <span className="tech-label text-[var(--color-cyan-fix)]">SECURITY ENCRYPTION</span>
           </div>
-          <p className="text-sm font-bold tracking-wider mb-1" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-fix)' }}>
+          <p className="text-sm font-extrabold tracking-wider font-mono mb-1 text-[var(--color-cyan-fix)]">
             AES-256-GCM / OMEGA-7
           </p>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-tech-border)]">
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[var(--color-tech-border)]">
             <span className="tech-label">KEY ROTATION:</span>
-            <span className="text-xs font-mono font-bold text-[#ffba20]">60s INTERVAL</span>
+            <span className="text-xs font-mono font-bold text-[#f59e0b]">60s INTERVAL</span>
           </div>
         </div>
       </div>
 
       <div>
-        <p className="tech-label mb-3" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>HARDWARE INTERFACE SUBSYSTEMS</p>
+        <p className="tech-label mb-3 text-[var(--color-cyan-fix)]">HARDWARE INTERFACE SUBSYSTEMS</p>
         <div className="space-y-3">
           {HARDWARE_ROWS.map(row => (
-            <div key={row.name} className="recessed-tray rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-xl" style={{ color: 'var(--accent-color, var(--color-cyan-dim))' }}>
-                  {row.icon}
-                </span>
+            <div key={row.name} className="recessed-tray rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3 border border-[rgba(255,255,255,0.06)] bg-[rgba(15,23,42,0.5)] backdrop-blur-md hover:border-[rgba(0,219,231,0.25)] transition-all">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-[rgba(0,219,231,0.08)] border border-[rgba(0,219,231,0.25)] flex items-center justify-center text-[var(--color-cyan-fix)]">
+                  <span className="material-symbols-outlined text-xl">
+                    {row.icon}
+                  </span>
+                </div>
                 <div>
-                  <p className="text-sm font-bold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}>
+                  <p className="text-sm font-bold font-mono text-[var(--color-text-primary)]">
                     {row.name}
                   </p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5" style={{ fontFamily: 'var(--font-mono)' }}>
+                  <p className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">
                     {row.type} — {row.detail}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="status-pill text-[0.6rem]" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', borderColor: 'rgba(0,230,118,0.3)' }}>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00e676]" />
+                <span className="status-pill-green text-[0.6rem] py-1 px-3">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10b981]" />
                   {row.status}
                 </span>
               </div>

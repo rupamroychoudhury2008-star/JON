@@ -35,13 +35,13 @@ export default function CommandBar() {
   };
 
   return (
-    <div className="w-full flex items-center justify-between gap-4 md:gap-6">
+    <div className="w-full flex items-center justify-between gap-2.5 sm:gap-4 md:gap-6">
       {/* Far Left: Circular Microphone Dial + Live Waveform */}
       <MicControl />
 
-      {/* Center: Recessed Command Input Box (Matching Screenshot) */}
-      <div className="relative flex-1 flex flex-col justify-center recessed-input-box rounded-xl px-4 py-2.5 min-h-[64px]">
-        <div className="flex items-center justify-between gap-2">
+      {/* Center: Recessed Command Input Box */}
+      <div className="relative flex-1 flex flex-col justify-center recessed-input-box px-3 sm:px-4 py-2 sm:py-2.5 min-h-[52px] sm:min-h-[64px]">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           <input
             ref={inputRef}
             type="text"
@@ -50,46 +50,47 @@ export default function CommandBar() {
             onKeyDown={handleKeyDown}
             placeholder={
               isAssistantSpeaking
-                ? "Assistant transmitting... (Esc to stop)"
+                ? "Assistant transmitting..."
                 : isProcessing
                 ? "Analyzing command..."
                 : isMicListening
-                ? "Listening to voice input..."
+                ? "Listening..."
                 : "Issue command to JON..."
             }
-            className="w-full bg-transparent border-none outline-none text-xs text-[var(--color-text-primary)] placeholder-slate-600 font-mono"
+            className="w-full bg-transparent border-none outline-none text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] font-mono font-medium"
           />
 
-          {/* Three-dot menu icon on right side of input */}
-          <button type="button" className="text-slate-600 hover:text-slate-400 transition-colors p-1 cursor-pointer">
+          {/* Action menu icon */}
+          <button type="button" className="text-[var(--color-text-muted)] hover:text-[var(--color-cyan-fix)] transition-colors p-1 cursor-pointer">
             <span className="material-symbols-outlined text-base">more_vert</span>
           </button>
         </div>
 
         {/* Subtext at bottom of input box */}
-        <span className="text-[0.52rem] font-mono text-slate-600 mt-1 select-none">
-          Press Enter to send • Shift + Enter for newline
-        </span>
+        <div className="hidden sm:flex items-center justify-between text-[0.52rem] font-mono text-[var(--color-text-muted)] mt-1 select-none">
+          <span>Press <kbd className="px-1 py-0.5 rounded bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-[var(--color-cyan-fix)] font-bold">Enter ↵</kbd> to send</span>
+          <span className="hidden md:inline text-[var(--color-cyan-fix)] opacity-80">JON NLP V2.4</span>
+        </div>
       </div>
 
-      {/* Far Right: Large Heavy Metallic EXECUTE Button (Matching Screenshot) */}
+      {/* Far Right: Heavy Metallic / Cyber EXECUTE Button */}
       <button
         type="button"
         onClick={handleSend}
         disabled={!inputText.trim() || isProcessing}
-        className="relative bezel-button px-6 py-4 rounded-xl font-mono text-xs font-extrabold text-[var(--accent-fix)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2.5 h-[64px] min-w-[130px] justify-center cursor-pointer group flex-shrink-0"
+        className="relative bezel-button px-3.5 py-2 sm:px-6 sm:py-3.5 rounded-xl font-mono text-xs font-extrabold text-[var(--color-cyan-fix)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 sm:gap-2.5 h-[52px] sm:h-[64px] min-w-[48px] sm:min-w-[135px] justify-center cursor-pointer group flex-shrink-0"
       >
-        {/* Play Triangle Icon ▷ */}
-        <span className="material-symbols-outlined text-lg text-[var(--accent-fix)] group-hover:scale-110 transition-transform">
+        {/* Play Icon */}
+        <span className="material-symbols-outlined text-xl text-[var(--color-cyan-fix)] group-hover:scale-125 transition-transform duration-200">
           play_arrow
         </span>
-        <span className="tracking-[0.16em]">EXECUTE</span>
+        <span className="hidden sm:inline tracking-[0.18em]">EXECUTE</span>
 
-        {/* Right side grip lines / LED indicators */}
-        <div className="flex flex-col gap-1 ml-1">
-          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
-          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
-          <span className="w-1 h-1 rounded-full bg-[var(--color-cyan-fix)] opacity-80" />
+        {/* Right side LED indicators (Desktop) */}
+        <div className="hidden md:flex flex-col gap-1 ml-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-cyan-fix)] shadow-[0_0_6px_var(--color-cyan-glow)] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-cyan-fix)] opacity-60" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-cyan-fix)] opacity-30" />
         </div>
       </button>
     </div>

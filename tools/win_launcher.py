@@ -68,7 +68,9 @@ def find_executable(app_name: str) -> Optional[str]:
         "discord": "Discord.exe",
         "firefox": "firefox.exe",
         "brave": "brave.exe",
-        "snipping tool": "SnippingTool.exe"
+        "snipping tool": "SnippingTool.exe",
+        "whatsapp": "WhatsApp.exe",
+        "whats app": "WhatsApp.exe"
     }
 
     exe_name = exe_map.get(target, target if target.endswith(".exe") else f"{target}.exe")
@@ -88,6 +90,11 @@ def find_executable(app_name: str) -> Optional[str]:
         os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft Office\root\Office16"),
         os.path.expandvars(r"%LocalAppData%\Spotify"),
         os.path.expandvars(r"%LocalAppData%\Discord"),
+        os.path.expandvars(r"%LocalAppData%\WhatsApp"),
+        os.path.expandvars(r"%LocalAppData%\Programs\WhatsApp"),
+        os.path.expandvars(r"%ProgramFiles%\WhatsApp"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\WhatsApp"),
+        os.path.expandvars(r"%LocalAppData%\WhatsAppDesktop"),
     ]
 
     for d in candidate_dirs:
@@ -284,6 +291,23 @@ def launch_app(app_name: str, app_args: Optional[List[str]] = None) -> ToolResul
         os.system("start microsoft.windows.camera:")
         time.sleep(0.5)
         return ToolResult(success=True, tool_name="open_app", action="launch", target="camera", message="Camera app launched successfully.")
+
+    if target in ["whatsapp", "whats app", "whatsapp desktop"]:
+        # Try protocol handler first if installed
+        try:
+            res_code = subprocess.run(["cmd", "/c", "start", "whatsapp:"], capture_output=True, text=True)
+            if res_code.returncode == 0:
+                time.sleep(0.5)
+                return ToolResult(success=True, tool_name="open_app", action="launch", target="whatsapp", message="WhatsApp launched successfully.")
+        except Exception:
+            pass
+
+        exe_path = find_executable(target)
+        if exe_path:
+            return _launch_and_verify_process("open_app", "launch", target, [exe_path], "WhatsApp")
+
+        _log("WhatsApp desktop app not found. Launching WhatsApp Web fallback...")
+        return launch_url("https://web.whatsapp.com")
 
     # 2. Executable resolution
     exe_path = find_executable(target)

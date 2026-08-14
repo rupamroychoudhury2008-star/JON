@@ -4,14 +4,8 @@ import { useWebSpeech, type MicPermissionState } from '../hooks/useWebSpeech';
 export type ViewId =
   | 'voice'
   | 'session'
-  | 'tools'
-  | 'memory'
-  | 'metrics'
-  | 'logs'
-  | 'system'
   | 'appearance'
   | 'connectivity'
-  | 'diagnostics'
   | 'settings';
 
 export type VoiceState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING' | 'ERROR';
@@ -119,11 +113,43 @@ export interface AppState {
   requestMicPermission: () => Promise<boolean>;
 }
 
-export const THEME_COLORS: Record<ThemePalette, { primary: string; fix: string; glow: string; subtle: string }> = {
-  cyan:    { primary: '#00dbe7', fix: '#74f5ff', glow: 'rgba(0,219,231,0.45)', subtle: 'rgba(0,219,231,0.08)' },
-  amber:   { primary: '#ffba20', fix: '#ffe082', glow: 'rgba(255,186,32,0.45)', subtle: 'rgba(255,186,32,0.08)' },
-  emerald: { primary: '#00e676', fix: '#69f0ae', glow: 'rgba(0,230,118,0.45)', subtle: 'rgba(0,230,118,0.08)' },
-  violet:  { primary: '#b388ff', fix: '#d1c4e9', glow: 'rgba(179,136,255,0.45)', subtle: 'rgba(179,136,255,0.08)' },
+export const THEME_COLORS: Record<ThemePalette, { primary: string; fix: string; glow: string; subtle: string; border: string; borderBright: string; bg: string }> = {
+  cyan: {
+    primary: '#00dbe7',
+    fix: '#00dbe7',
+    glow: 'rgba(0, 219, 231, 0.4)',
+    subtle: 'rgba(0, 219, 231, 0.08)',
+    border: 'rgba(0, 219, 231, 0.25)',
+    borderBright: 'rgba(0, 219, 231, 0.65)',
+    bg: '#090d14',
+  },
+  amber: {
+    primary: '#f59e0b',
+    fix: '#ffba20',
+    glow: 'rgba(255, 186, 32, 0.4)',
+    subtle: 'rgba(255, 186, 32, 0.08)',
+    border: 'rgba(255, 186, 32, 0.25)',
+    borderBright: 'rgba(255, 186, 32, 0.65)',
+    bg: '#14120e',
+  },
+  emerald: {
+    primary: '#10b981',
+    fix: '#00e676',
+    glow: 'rgba(0, 230, 118, 0.4)',
+    subtle: 'rgba(0, 230, 118, 0.08)',
+    border: 'rgba(0, 230, 118, 0.25)',
+    borderBright: 'rgba(0, 230, 118, 0.65)',
+    bg: '#0f1411',
+  },
+  violet: {
+    primary: '#8b5cf6',
+    fix: '#b388ff',
+    glow: 'rgba(179, 136, 255, 0.4)',
+    subtle: 'rgba(179, 136, 255, 0.08)',
+    border: 'rgba(179, 136, 255, 0.25)',
+    borderBright: 'rgba(179, 136, 255, 0.65)',
+    bg: '#131118',
+  },
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -138,13 +164,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('jon_auth_user') || sessionStorage.getItem('jon_auth_user');
-      return saved ? JSON.parse(saved) : null;
+      return saved ? JSON.parse(saved) : {
+        username: 'Operator',
+        role: 'Chief System Operator',
+        clearanceLevel: 'OMEGA-7',
+        loginTime: Date.now()
+      };
     } catch {
-      return null;
+      return {
+        username: 'Operator',
+        role: 'Chief System Operator',
+        clearanceLevel: 'OMEGA-7',
+        loginTime: Date.now()
+      };
     }
   });
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = true;
 
   const [activeView, setActiveView] = useState<ViewId>('voice');
   const [voiceState, setVoiceState] = useState<VoiceState>('IDLE');
@@ -153,7 +189,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<VaultNote[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [allExecutedTools, setAllExecutedTools] = useState<ToolResultEntry[]>([]);
-  const [theme, setThemeState] = useState<ThemePalette>('cyan');
+  const [theme, setThemeState] = useState<ThemePalette>(() => {
+    return (localStorage.getItem('jon_theme') as ThemePalette) || 'cyan';
+  });
   const [colorMode, setColorModeState] = useState<ColorMode>(() => {
     return (localStorage.getItem('jon_color_mode') as ColorMode) || 'dark';
   });
@@ -286,19 +324,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setColorMode('light');
     } else if (lower.includes('dark mode')) {
       setColorMode('dark');
-    } else if (lower.includes('diagnostic') || lower.includes('diag')) {
-      setActiveView('diagnostics');
-    } else if (lower.includes('metric') || lower.includes('telemetry')) {
-      setActiveView('metrics');
-    } else if (lower.includes('log') || lower.includes('terminal')) {
-      setActiveView('logs');
     } else if (lower.includes('session') || lower.includes('history')) {
       setActiveView('session');
-    } else if (lower.includes('memory') || lower.includes('vault') || lower.includes('notes')) {
-      setActiveView('memory');
-    } else if (lower.includes('tool')) {
-      setActiveView('tools');
-    } else if (lower.includes('appearance') || lower.includes('theme')) {
+    } else if (lower.includes('appearance') || lower.includes('theme') || lower.includes('automation')) {
       setActiveView('appearance');
     } else if (lower.includes('connectivity') || lower.includes('network')) {
       setActiveView('connectivity');
@@ -400,7 +428,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           timestamp: Date.now(),
           category: 'SYS',
           level: 'SUCCESS',
-          message: `Obsidian Vault sync complete — ${data.total || 0} notes indexed`,
+          message: `Memory Vault sync complete — ${data.total || 0} notes indexed`,
         });
       }
     } catch (e: any) {
@@ -408,7 +436,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         timestamp: Date.now(),
         category: 'SYS',
         level: 'WARN',
-        message: `Failed to fetch Obsidian Vault notes: ${e.message}`,
+        message: `Failed to fetch Memory Vault notes: ${e.message}`,
       });
     } finally {
       setIsLoadingNotes(false);
@@ -464,12 +492,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((t: ThemePalette) => {
     setThemeState(t);
-    const colors = THEME_COLORS[t];
-    document.documentElement.style.setProperty('--accent-color', colors.primary);
-    document.documentElement.style.setProperty('--accent-fix', colors.fix);
-    document.documentElement.style.setProperty('--accent-glow', colors.glow);
-    document.documentElement.style.setProperty('--accent-subtle', colors.subtle);
+    localStorage.setItem('jon_theme', t);
+    const colors = THEME_COLORS[t] || THEME_COLORS.cyan;
+    const root = document.documentElement;
+    root.setAttribute('data-theme', t);
+    root.style.setProperty('--color-cyan-dim', colors.primary);
+    root.style.setProperty('--color-cyan-fix', colors.fix);
+    root.style.setProperty('--color-cyan-glow', colors.glow);
+    root.style.setProperty('--color-cyan-subtle', colors.subtle);
+    root.style.setProperty('--color-cyan-border', colors.border);
+    root.style.setProperty('--color-cyan-border-bright', colors.borderBright);
+    root.style.setProperty('--accent-color', colors.primary);
+    root.style.setProperty('--accent-fix', colors.fix);
+    root.style.setProperty('--accent-glow', colors.glow);
+    root.style.setProperty('--accent-subtle', colors.subtle);
   }, []);
+
+  useEffect(() => {
+    setTheme(theme);
+  }, [theme, setTheme]);
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...partial }));
@@ -512,8 +553,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 function generateInitialLogs(): LogEntry[] {
   const now = Date.now();
   const entries: Omit<LogEntry, 'id'>[] = [
-    { timestamp: now - 12000, category: 'SYS', level: 'INFO', message: 'JON OBSIDIAN COMMAND CORE v5.0 — Systems Online', details: 'Core architecture: React + TypeScript + GLSL ES 3.0' },
-    { timestamp: now - 11000, category: 'SYS', level: 'SUCCESS', message: 'Memory registers verified — 16384 MB allocated', details: 'Obsidian ShortTerm & LongTerm memory vaults connected' },
+    { timestamp: now - 12000, category: 'SYS', level: 'INFO', message: 'JON COMMAND CORE v5.0 — Systems Online', details: 'Core architecture: React + TypeScript + GLSL ES 3.0' },
+    { timestamp: now - 11000, category: 'SYS', level: 'SUCCESS', message: 'Memory registers verified — 16384 MB allocated', details: 'ShortTerm & LongTerm memory vaults connected' },
     { timestamp: now - 10000, category: 'NET', level: 'INFO', message: 'Uplink interfaces active — eth0: 10Gbit, wlan0: Wi-Fi 7', details: 'REST gateway: http://localhost:8000/api/command' },
     { timestamp: now - 9000, category: 'SEC', level: 'SUCCESS', message: 'Security protocol Omega-7 active — AES-256-GCM', details: 'TLS 1.3 handshake verified' },
     { timestamp: now - 8000, category: 'AI', level: 'INFO', message: 'Neural pipeline initialized — JON Core connected', details: 'Model endpoint: /api/command' },

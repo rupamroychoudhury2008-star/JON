@@ -10,12 +10,6 @@ system:
   vault_path: "d:/JON/vault"
   require_confirmation: true
 
-ollama:
-  base_url: "http://127.0.0.1:11434"
-  router_model: "llama3.2:3b"
-  offline_model: "llama3.1:8b"
-  timeout_seconds: 60
-
 network:
   check_hosts:
     - "http://1.1.1.1"
