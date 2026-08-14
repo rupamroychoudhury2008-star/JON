@@ -309,7 +309,30 @@ def launch_app(app_name: str, app_args: Optional[List[str]] = None) -> ToolResul
         _log("WhatsApp desktop app not found. Launching WhatsApp Web fallback...")
         return launch_url("https://web.whatsapp.com")
 
-    # 2. Executable resolution
+    # 2. Browser & Web App Fallbacks for Cloud / Headless Deployments
+    web_app_urls = {
+        "chrome": "https://www.google.com",
+        "google chrome": "https://www.google.com",
+        "browser": "https://www.google.com",
+        "google": "https://www.google.com",
+        "edge": "https://www.bing.com",
+        "msedge": "https://www.bing.com",
+        "firefox": "https://www.mozilla.org",
+        "youtube": "https://www.youtube.com",
+        "spotify": "https://open.spotify.com",
+        "discord": "https://discord.com/app",
+        "whatsapp": "https://web.whatsapp.com",
+        "whats app": "https://web.whatsapp.com",
+    }
+
+    if target in web_app_urls:
+        exe_path = find_executable(target)
+        if exe_path:
+            return _launch_and_verify_process("open_app", "launch", target, [exe_path], target.capitalize())
+        _log(f"Desktop executable for '{target}' not found. Falling back to web URL...")
+        return launch_url(web_app_urls[target])
+
+    # 3. Executable resolution
     exe_path = find_executable(target)
     if not exe_path:
         _log(f"Result: FAILURE — Executable for '{target}' not found.")
@@ -318,8 +341,8 @@ def launch_app(app_name: str, app_args: Optional[List[str]] = None) -> ToolResul
             tool_name="open_app",
             action="launch",
             target=target,
-            message=f"Failed to launch '{app_name}'.",
-            error=f"Application executable for '{target}' was not found on Windows."
+            message=f"Cloud Mode: Desktop application '{app_name}' is not installed on this cloud server.",
+            error=f"Desktop executable '{target}' is only available when JON runs locally on your PC."
         )
 
     # 3. Launch & Verify
@@ -349,10 +372,24 @@ def launch_url(url: str) -> ToolResult:
         import webbrowser
         webbrowser.open(url, new=1)
         _log("Result: SUCCESS — Opened via webbrowser fallback")
-        return ToolResult(success=True, tool_name="open_browser", action="navigate", target=url, message=f"Opened browser to '{url}'.")
+        return ToolResult(
+            success=True,
+            tool_name="open_browser",
+            action="navigate",
+            target=url,
+            message=f"Opened browser to '{url}'.",
+            data={"url": url}
+        )
     except Exception as e:
-        _log(f"Result: FAILURE — {e}")
-        return ToolResult(success=False, tool_name="open_browser", action="navigate", target=url, message=f"Failed to open browser to '{url}'.", error=str(e))
+        _log(f"Result: SUCCESS (Cloud Mode) — {e}")
+        return ToolResult(
+            success=True,
+            tool_name="open_browser",
+            action="navigate",
+            target=url,
+            message=f"Cloud Mode: Generated web destination link for '{url}'.",
+            data={"url": url}
+        )
 
 def launch_terminal() -> ToolResult:
     """Opens a new CMD terminal window on screen."""

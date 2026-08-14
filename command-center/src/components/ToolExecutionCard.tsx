@@ -72,6 +72,21 @@ export default function ToolExecutionCard({ tool, latencyMs }: ToolExecutionCard
         {tool.message}
       </p>
 
+      {/* Render clickable button if URL is present in data */}
+      {tool.data && typeof tool.data.url === 'string' && (
+        <div className="mt-2.5">
+          <a
+            href={tool.data.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--color-cyan-subtle)] border border-[var(--color-cyan-border-bright)] text-[var(--color-cyan-fix)] text-xs font-mono font-bold hover:bg-[rgba(0,219,231,0.2)] hover:border-[var(--color-cyan-fix)] transition-all shadow-[0_0_12px_var(--color-cyan-glow)] cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">open_in_new</span>
+            Open {tool.data.url}
+          </a>
+        </div>
+      )}
+
       {/* Error Output if present */}
       {tool.error && (
         <div className="mt-2 p-2.5 rounded-lg bg-red-950/60 border border-red-500/30 text-red-300 text-[0.68rem] font-mono">
@@ -81,7 +96,7 @@ export default function ToolExecutionCard({ tool, latencyMs }: ToolExecutionCard
       )}
 
       {/* Structured data payload if present */}
-      {tool.data && Object.keys(tool.data).length > 0 && (
+      {tool.data && Object.keys(tool.data).length > 0 && !tool.data.url && (
         <pre className="mt-2 p-2.5 rounded-lg bg-[rgba(9,13,20,0.8)] border border-[rgba(255,255,255,0.08)] text-[var(--color-cyan-fix)] text-[0.65rem] font-mono overflow-x-auto">
           {JSON.stringify(tool.data, null, 2)}
         </pre>
