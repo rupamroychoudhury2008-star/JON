@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp, type SessionEntry } from '../context/AppContext';
-import { useWebSpeech } from '../hooks/useWebSpeech';
 import ToolExecutionCard from '../components/ToolExecutionCard';
 
 export default function SessionHistoryView() {
-  const { sessionHistory, clearHistory, settings } = useApp();
-  const { speak } = useWebSpeech();
+  const { sessionHistory, clearHistory, settings, speak, unlockAudio } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -155,7 +153,7 @@ export default function SessionHistoryView() {
 
                     {!isUser && (
                       <button
-                        onClick={() => speak(entry.text, settings.audioVolume)}
+                        onClick={() => { unlockAudio(); speak(entry.text, settings.audioVolume); }}
                         className="extruded-btn p-1.5 rounded-lg cursor-pointer hover:scale-110 transition-transform text-[var(--color-cyan-fix)] border-[rgba(0,219,231,0.3)]"
                         title="Replay voice response"
                       >

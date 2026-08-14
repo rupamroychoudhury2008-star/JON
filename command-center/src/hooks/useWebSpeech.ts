@@ -9,6 +9,7 @@ interface WebSpeechHook {
   stopListening: () => void;
   speak: (text: string, volume?: number) => void;
   stopSpeaking: () => void;
+  unlockAudio: () => void;
   isSpeaking: boolean;
   isSupported: boolean;
   wakeWordDetected: boolean;
@@ -40,6 +41,60 @@ export function useWebSpeech(options?: {
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDispatchedTextRef = useRef<string>('');
   const restartRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAudioUnlockedRef = useRef(false);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const resumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentSpeakingIdRef = useRef(0);
+
+  // Pre-load and cache available voices asynchronously (critical for mobile browsers)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const loadVoices = () => {
+      try {
+        const available = window.speechSynthesis.getVoices();
+        if (available && available.length > 0) {
+          voicesRef.current = available;
+        }
+      } catch {}
+    };
+    loadVoices();
+    if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  // Audio Engine Unlocker for Mobile Autoplay Restrictions
+  const unlockAudio = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      if (!isAudioUnlockedRef.current) {
+        const dummy = new SpeechSynthesisUtterance(' ');
+        dummy.volume = 0.01;
+        dummy.rate = 10;
+        window.speechSynthesis.speak(dummy);
+        isAudioUnlockedRef.current = true;
+      }
+    } catch {}
+  }, []);
+
+  // Automatically trigger unlockAudio on initial mobile gesture (touch or click)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleGesture = () => {
+      unlockAudio();
+      window.removeEventListener('touchstart', handleGesture);
+      window.removeEventListener('click', handleGesture);
+    };
+    window.addEventListener('touchstart', handleGesture, { passive: true, once: true });
+    window.addEventListener('click', handleGesture, { passive: true, once: true });
+    return () => {
+      window.removeEventListener('touchstart', handleGesture);
+      window.removeEventListener('click', handleGesture);
+    };
+  }, [unlockAudio]);
 
   const isSupported = typeof window !== 'undefined' && (
     'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
@@ -279,6 +334,23 @@ export function useWebSpeech(options?: {
     accumulatedSpeechRef.current = '';
   }, []);
 
+  const clearResumeInterval = () => {
+    if (resumeIntervalRef.current) {
+      clearInterval(resumeIntervalRef.current);
+      resumeIntervalRef.current = null;
+    }
+  };
+
+  const stopSpeaking = useCallback(() => {
+    currentSpeakingIdRef.current++;
+    clearResumeInterval();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+    setIsSpeaking(false);
+    resetToPassiveListening();
+  }, [resetToPassiveListening]);
+
   const speak = useCallback((text: string, volume = 0.7) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
@@ -290,51 +362,120 @@ export function useWebSpeech(options?: {
     isStartingRef.current = false;
     setIsListening(false);
 
-    window.speechSynthesis.cancel();
+    // Warm up / unlock audio engine on mobile
+    unlockAudio();
+
+    // Safely handle ongoing speech on mobile Safari
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
 
     // Strip markdown tags and emojis for clean speech output
     const cleanText = text.replace(/[\*#`\_✅⚡🤖🗣️⚠️]/g, '').trim();
     if (!cleanText) return;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 0.95;
-    utterance.pitch = 0.95;
-    utterance.volume = volume;
-
-    // Pick a natural sounding English voice if available
-    try {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        const preferred = voices.find(v =>
-          v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Karen'))
-        );
-        if (preferred) utterance.voice = preferred;
+    // Mobile sentence chunking (prevents 15-second iOS Safari timeout)
+    const rawParts = cleanText.split(/(?<=[.?!;\n])\s+/);
+    const chunks: string[] = [];
+    for (const part of rawParts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      if (trimmed.length > 160) {
+        const subParts = trimmed.match(/.{1,160}(?:\s+|$)/g) || [trimmed];
+        chunks.push(...subParts.map(s => s.trim()).filter(Boolean));
+      } else {
+        chunks.push(trimmed);
       }
-    } catch {}
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      resetToPassiveListening();
-    };
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      resetToPassiveListening();
-    };
-
-    try {
-      window.speechSynthesis.resume();
-    } catch {}
-    window.speechSynthesis.speak(utterance);
-  }, [resetToPassiveListening]);
-
-  const stopSpeaking = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
     }
-    setIsSpeaking(false);
-    resetToPassiveListening();
-  }, [resetToPassiveListening]);
+
+    if (chunks.length === 0) return;
+
+    setIsSpeaking(true);
+    const sessionId = ++currentSpeakingIdRef.current;
+
+    // Mobile keep-alive timer for iOS Safari
+    clearResumeInterval();
+    resumeIntervalRef.current = setInterval(() => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        if (window.speechSynthesis.paused) {
+          try { window.speechSynthesis.resume(); } catch {}
+        }
+      }
+    }, 3000);
+
+    let currentIdx = 0;
+
+    const speakNextChunk = (index: number) => {
+      if (currentSpeakingIdRef.current !== sessionId) {
+        clearResumeInterval();
+        return;
+      }
+
+      if (index >= chunks.length) {
+        clearResumeInterval();
+        setIsSpeaking(false);
+        resetToPassiveListening();
+        return;
+      }
+
+      const chunkStr = chunks[index];
+      const utterance = new SpeechSynthesisUtterance(chunkStr);
+      utterance.rate = 0.95;
+      utterance.pitch = 0.95;
+      utterance.volume = Math.max(0.1, Math.min(1, volume));
+      utterance.lang = 'en-US';
+
+      try {
+        const available = voicesRef.current.length > 0 ? voicesRef.current : (window.speechSynthesis.getVoices() || []);
+        if (available && available.length > 0) {
+          const preferred = available.find(v =>
+            v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Karen'))
+          );
+          if (preferred) utterance.voice = preferred;
+        }
+      } catch {}
+
+      utterance.onend = () => {
+        if (currentSpeakingIdRef.current !== sessionId) return;
+        currentIdx++;
+        speakNextChunk(currentIdx);
+      };
+
+      utterance.onerror = (err) => {
+        if (currentSpeakingIdRef.current !== sessionId) return;
+        console.warn('SpeechSynthesis utterance error:', err);
+        currentIdx++;
+        if (currentIdx < chunks.length) {
+          speakNextChunk(currentIdx);
+        } else {
+          clearResumeInterval();
+          setIsSpeaking(false);
+          resetToPassiveListening();
+        }
+      };
+
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch {}
+
+      // Short delay for iOS Safari speech cancellation queue buffer
+      setTimeout(() => {
+        if (currentSpeakingIdRef.current !== sessionId) return;
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          console.warn('SpeechSynthesis speak failed:', e);
+          clearResumeInterval();
+          setIsSpeaking(false);
+          resetToPassiveListening();
+        }
+      }, index === 0 ? 60 : 10);
+    };
+
+    speakNextChunk(0);
+  }, [resetToPassiveListening, unlockAudio]);
 
   return {
     isListening,
@@ -343,6 +484,7 @@ export function useWebSpeech(options?: {
     stopListening,
     speak,
     stopSpeaking,
+    unlockAudio,
     isSpeaking,
     isSupported,
     wakeWordDetected,

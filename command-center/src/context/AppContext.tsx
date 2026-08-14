@@ -103,6 +103,8 @@ export interface AppState {
   processCommand: (text: string) => Promise<void>;
 
   // Single Shared Voice Controller Exposed via Context
+  speak: (text: string, volume?: number) => void;
+  unlockAudio: () => void;
   isMicListening: boolean;
   speechTranscript: string;
   startMicListening: () => void;
@@ -305,6 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const processCommand = useCallback(async (text: string) => {
+    speech.unlockAudio();
     const startTime = performance.now();
     addToHistory({ role: 'user', text, timestamp: Date.now() });
     setVoiceState('PROCESSING');
@@ -537,6 +540,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     processCommand,
 
     // Expose Single Shared Voice Controller
+    speak: speech.speak,
+    unlockAudio: speech.unlockAudio,
     isMicListening: speech.isListening,
     speechTranscript: speech.transcript,
     startMicListening: speech.startListening,
