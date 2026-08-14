@@ -280,7 +280,7 @@ export function useWebSpeech(options?: {
   }, []);
 
   const speak = useCallback((text: string, volume = 0.7) => {
-    if (!window.speechSynthesis) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
     pipelineModeRef.current = 'MUTED';
     if (recognitionRef.current) {
@@ -291,10 +291,26 @@ export function useWebSpeech(options?: {
     setIsListening(false);
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Strip markdown tags and emojis for clean speech output
+    const cleanText = text.replace(/[\*#`\_✅⚡🤖🗣️⚠️]/g, '').trim();
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.95;
-    utterance.pitch = 0.9;
+    utterance.pitch = 0.95;
     utterance.volume = volume;
+
+    // Pick a natural sounding English voice if available
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const preferred = voices.find(v =>
+          v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Karen'))
+        );
+        if (preferred) utterance.voice = preferred;
+      }
+    } catch {}
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
@@ -306,6 +322,9 @@ export function useWebSpeech(options?: {
       resetToPassiveListening();
     };
 
+    try {
+      window.speechSynthesis.resume();
+    } catch {}
     window.speechSynthesis.speak(utterance);
   }, [resetToPassiveListening]);
 

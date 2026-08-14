@@ -8,6 +8,7 @@ export default function MicControl() {
     startMicListening, stopMicListening,
     isSpeechSupported, wakeWordDetected,
     micPermission, requestMicPermission,
+    setIsSidebarExpanded
   } = useApp();
 
   const isAssistantSpeaking = voiceState === 'SPEAKING';
@@ -15,6 +16,8 @@ export default function MicControl() {
   const isDenied = micPermission === 'denied';
 
   const handleMicClick = async () => {
+    setIsSidebarExpanded(false);
+
     if (isAssistantSpeaking) {
       stopAssistantSpeech();
       return;

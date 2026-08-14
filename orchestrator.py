@@ -40,17 +40,20 @@ class JonOrchestrator:
 
     def _build_response_sentence(self, tool_results_list: List[Dict[str, Any]]) -> str:
         messages = []
+        all_succeeded = True
         for tr in tool_results_list:
             if isinstance(tr, dict) and tr.get("message"):
                 msg = tr.get("message")
                 if tr.get("success"):
                     messages.append(msg)
                 else:
-                    err = f" (Error: {tr.get('error')})" if tr.get("error") else ""
+                    all_succeeded = False
+                    err = f" ({tr.get('error')})" if tr.get("error") else ""
                     messages.append(f"{msg}{err}")
         if not messages:
             return "Task completed."
-        return "Done! " + " ".join(messages)
+        prefix = "Done! " if all_succeeded else "Action status: "
+        return prefix + " ".join(messages)
 
     def get_conversation_history(self, session_id: str) -> List[Dict[str, str]]:
         """Returns the conversation history for a session."""
