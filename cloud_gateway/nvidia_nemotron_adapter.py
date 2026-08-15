@@ -1,7 +1,9 @@
 import time
 import requests
 from typing import Dict, Any, Optional, List
-from config.settings import settings
+import requests
+import json
+from .types import ToolCall, ToolResult, ToolExecError, CloudAPIConfig
 
 class NvidiaNemotronAdapter:
     """Adapter for Nvidia NIM - Nemotron / Llama Nemotron (Full tool-use / device automation)."""
